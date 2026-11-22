@@ -1,0 +1,20 @@
+## Cold start (am start -W, 5 runs)
+TotalTime: 521
+TotalTime: 508
+TotalTime: 518
+TotalTime: 514
+TotalTime: 503
+Warning: Activity not started, intent has been delivered to currently running top-most instance.
+## Memory before player loop: PSS=193471 KB, activities=5
+## Memory after 20 open/close cycles: PSS=213363 KB, activities=5
+## Jank (gfxinfo)
+Total frames rendered: 747
+Janky frames: 183 (24.50%)
+Janky frames (legacy): 38 (5.09%)
+90th percentile: 14ms
+95th percentile: 21ms
+## Thermal
+Thermal Status: 0
+Cached temperatures:
+	Temperature{mValue=25.0, mType=2, mName=SUBBAT, mStatus=0}
+	Temperature{mValue=49.6, mType=0, mName=AP, mStatus=0}

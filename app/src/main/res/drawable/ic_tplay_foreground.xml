@@ -1,0 +1,14 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+    <!-- Rounded play triangle, centered inside the 66dp safe zone -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M42,32 Q38,32 38,37 L38,67 Q38,72 42,69.5 L68,56.5 Q72,54 68,51.5 Z" />
+    <!-- Download arrow under the triangle: the "T" stem of TPlay -->
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:pathData="M52,76 L56,76 L56,81 L60,81 L54,87 L48,81 L52,81 Z" />
+</vector>

@@ -1,0 +1,123 @@
+<!doctype html><meta charset="utf-8"><title>TPlay Android: mockup</title>
+<style>
+:root{--bg:#0f1115;--card:#1a1d24;--line:#2a2f3a;--tx:#e8eaf0;--mut:#8b93a5;--acc:#5b8cff;--ok:#3ecf8e;--warn:#f5a623;--bad:#ef5b5b}
+*{box-sizing:border-box}body{margin:0;background:#e9ebf0;font:14px system-ui,sans-serif;color:#222}
+h1{margin:24px 24px 4px}p.sub{margin:0 24px 16px;color:#555}
+.row{display:flex;gap:28px;flex-wrap:wrap;padding:8px 24px 40px}
+.col{width:300px}.col h3{margin:0 0 8px;font-size:14px}.col small{display:block;color:#555;margin-top:8px;line-height:1.4}
+.phone{width:300px;height:620px;background:var(--bg);color:var(--tx);border-radius:28px;border:7px solid #111;overflow:hidden;display:flex;flex-direction:column;position:relative}
+.bar{height:26px;display:flex;justify-content:space-between;padding:6px 16px 0;font-size:11px;color:var(--mut)}
+.top{padding:10px 16px;font-weight:600;font-size:17px;display:flex;justify-content:space-between;align-items:center}
+.body{flex:1;overflow:hidden;padding:0 14px}
+.nav{display:flex;border-top:1px solid var(--line);background:var(--card)}
+.nav div{flex:1;text-align:center;padding:9px 0 11px;font-size:10px;color:var(--mut)}.nav .on{color:var(--acc)}
+.nav b{display:block;font-size:17px;font-weight:400}
+label{display:block;font-size:11px;color:var(--mut);margin:12px 0 4px}
+.in{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:10px;color:var(--mut);font-size:12px;display:flex;justify-content:space-between;gap:8px;min-height:40px;word-break:break-all}
+.in i{font-style:normal;color:var(--acc);white-space:nowrap}
+.btn{background:var(--acc);color:#fff;text-align:center;border-radius:12px;padding:12px;font-weight:600;margin-top:16px}
+.btn.alt{background:var(--card);border:1px solid var(--line);color:var(--tx);margin-top:8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;margin-top:10px}
+.item{display:flex;gap:10px}.th{width:62px;height:88px;border-radius:8px;background:linear-gradient(135deg,#34415f,#1f2638);flex:none;display:flex;align-items:end;padding:4px;font-size:9px;color:#cfd6ea}
+.item .t{font-weight:600;font-size:13px}.item .m{font-size:11px;color:var(--mut);margin-top:3px}
+.pb{height:5px;background:var(--line);border-radius:3px;margin-top:8px;overflow:hidden}.pb span{display:block;height:100%;background:var(--acc)}
+.tag{display:inline-block;font-size:10px;padding:2px 7px;border-radius:9px;background:#252b38;color:var(--mut);margin-right:4px}
+.tag.ok{color:var(--ok)}.tag.warn{color:var(--warn)}
+.step{display:flex;gap:10px;align-items:center;padding:8px 0;border-bottom:1px solid var(--line);font-size:12px}
+.dot{width:18px;height:18px;border-radius:50%;flex:none;text-align:center;font-size:11px;line-height:18px;background:var(--line)}
+.dot.ok{background:var(--ok);color:#06210f}.dot.run{background:var(--acc);color:#fff}
+.sec{font-size:11px;color:var(--mut);margin:16px 0 6px;text-transform:uppercase;letter-spacing:.5px}
+.set{display:flex;justify-content:space-between;align-items:center;padding:11px 0;border-bottom:1px solid var(--line);font-size:13px}
+.set span{color:var(--mut);font-size:12px}.sw{width:34px;height:20px;border-radius:10px;background:var(--acc);position:relative}.sw:after{content:"";position:absolute;right:2px;top:2px;width:16px;height:16px;border-radius:50%;background:#fff}
+.seg{display:flex;gap:6px;margin:6px 0}.seg div{flex:1;text-align:center;padding:8px 0;border-radius:9px;background:var(--card);border:1px solid var(--line);font-size:12px}.seg .on{background:var(--acc);border-color:var(--acc)}
+.danger{color:var(--bad)}
+.player{height:170px;background:#000;display:flex;align-items:center;justify-content:center;color:#666;font-size:12px;position:relative}
+.seek{position:absolute;left:12px;right:12px;bottom:12px;height:4px;background:#333;border-radius:2px}.seek span{display:block;width:42%;height:100%;background:var(--acc)}
+.note{margin:0 24px 8px;padding:10px 14px;background:#fff;border-radius:10px;max-width:980px;line-height:1.5}
+</style>
+<h1>TPlay for Android: mockup</h1>
+<p class=sub>Draft for your review. Nothing is built yet. All names, links and sizes are dummy values.</p>
+<div class=note><b>Flow:</b> paste magnet link (+ optional subtitle link) → app sends it to Real-Debrid → downloads the files into your chosen folder → unpacks RAR archives → plays in the built-in player → remembers where you stopped.</div>
+<div class=note><b>Questions for you at the bottom of this page.</b></div>
+<div class=row>
+
+<div class=col><h3>1. Add</h3><div class=phone><div class=bar><span>9:41</span><span>●●●</span></div>
+<div class=top>New movie</div><div class=body>
+<label>Magnet link (paste or "From clipboard")</label>
+<div class=in><span>magnet:?xt=urn:btih:87DD3F26…&amp;dn=Dummy%20Movie</span><i>Paste</i></div>
+<label>Subtitle link (optional, .srt / .zip / .rar)</label>
+<div class=in><span>https://example.com/subs/dummy.en.srt</span><i>Paste</i></div>
+<label>Save into</label>
+<div class=in><span>/Movies/TPlay/ <small style="color:#667">(parent folder)</small></span><i>Change</i></div>
+<div class=card style="font-size:12px;color:var(--mut)">Auto: pick largest video · unpack .rar · put subtitles next to the video · create a sub-folder named after the movie</div>
+<div class=btn>Download &amp; play</div>
+<div class="btn alt">Download only</div>
+</div>
+<div class=nav><div class=on><b>＋</b>Add</div><div><b>▶</b>Library</div><div><b>⇣</b>Active</div><div><b>⚙</b>Settings</div></div></div>
+<small>One screen for everything you asked for: magnet field, subtitle field, parent folder, automatic unpack.</small></div>
+
+<div class=col><h3>2. Progress (one job)</h3><div class=phone><div class=bar><span>9:41</span><span>●●●</span></div>
+<div class=top>Dummy Movie (2026)</div><div class=body>
+<div class=card><div style="display:flex;justify-content:space-between;font-size:12px"><span>Downloading</span><span>64% · 38 MB/s</span></div><div class=pb><span style="width:64%"></span></div><div style="font-size:11px;color:var(--mut);margin-top:6px">9.4 of 14.7 GB · about 2 min left</div></div>
+<div class=sec>Steps</div>
+<div class=step><div class="dot ok">✓</div>Sent to Real-Debrid</div>
+<div class=step><div class="dot ok">✓</div>Cached on Real-Debrid</div>
+<div class=step><div class="dot run">…</div>Downloading to /Movies/TPlay/Dummy Movie/</div>
+<div class=step><div class=dot></div>Unpack .rar (3 parts)</div>
+<div class=step><div class=dot></div>Add subtitles (dummy.en.srt)</div>
+<div class=step><div class=dot></div>Ready to play</div>
+<div class="btn alt">Stream now while it downloads</div>
+<div class="btn alt danger">Cancel and delete</div>
+</div>
+<div class=nav><div><b>＋</b>Add</div><div><b>▶</b>Library</div><div class=on><b>⇣</b>Active</div><div><b>⚙</b>Settings</div></div></div>
+<small>Each step is shown, so a failure says exactly where it stopped (cache, download, unpack, subtitles).</small></div>
+
+<div class=col><h3>3. Library and history</h3><div class=phone><div class=bar><span>9:41</span><span>●●●</span></div>
+<div class=top>Library <span style="font-size:13px;color:var(--mut)">⌕</span></div><div class=body>
+<div class=seg><div class=on>Continue</div><div>All</div><div>Finished</div></div>
+<div class=card><div class=item><div class=th>DUMMY<br>MOVIE</div><div style="flex:1"><div class=t>Dummy Movie (2026)</div><div class=m>Stopped at 1:12:40 of 2:41:05</div><div class=pb><span style="width:45%"></span></div><div class=m style="margin-top:6px">Last watched today 21:30</div><span class="tag ok">on device</span><span class=tag>EN subs</span></div></div></div>
+<div class=card><div class=item><div class=th>SAMPLE<br>SHOW S1E3</div><div style="flex:1"><div class=t>Sample Show S01E03</div><div class=m>Stopped at 0:18:02 of 0:47:10</div><div class=pb><span style="width:38%"></span></div><div class=m style="margin-top:6px">Last watched 2 days ago</div><span class="tag warn">expires in 5 days</span></div></div></div>
+<div class=card><div class=item><div class=th>TEST<br>FILM</div><div style="flex:1"><div class=t>Test Film (2024)</div><div class=m>Finished · watched 3 times</div><div class=m style="margin-top:6px">Last watched 12 days ago</div><span class=tag>stream link only</span></div></div></div>
+</div>
+<div class=nav><div><b>＋</b>Add</div><div class=on><b>▶</b>Library</div><div><b>⇣</b>Active</div><div><b>⚙</b>Settings</div></div></div>
+<small>Tap a title to resume at the saved time. "Stream link only" means the file was removed, so tapping re-fetches the link from Real-Debrid and still resumes at your timestamp.</small></div>
+
+<div class=col><h3>4. Player</h3><div class=phone><div class=bar><span>9:41</span><span>●●●</span></div>
+<div class=player>▶ Dummy Movie (2026)<div class=seek><span></span></div></div><div class=body>
+<div class=top style="padding:10px 0">1:12:40 / 2:41:05</div>
+<div class=set>Resume from saved time<span>on</span></div>
+<div class=set>Subtitles<span>EN (dummy.en.srt) ▾</span></div>
+<div class=set>Audio track<span>English 5.1 ▾</span></div>
+<div class=set>Speed<span>1.0× ▾</span></div>
+<div class=set>Open in external player<span>VLC / MX ▾</span></div>
+<div class=card style="font-size:12px;color:var(--mut)">Position saved every 10 seconds and when you leave the screen.</div>
+</div></div>
+<small>Built-in player (Media3) so the app can save timestamps itself. An external-player button is there for when you prefer VLC or MX Player.</small></div>
+
+<div class=col><h3>5. Settings and cleanup</h3><div class=phone><div class=bar><span>9:41</span><span>●●●</span></div>
+<div class=top>Settings</div><div class=body>
+<div class=sec>Storage</div>
+<div class=set>Parent folder<span>/Movies/TPlay ›</span></div>
+<div class=set>Space used<span>38.2 GB (6 titles)</span></div>
+<div class=sec>Auto cleanup</div>
+<label>Delete downloaded files older than</label>
+<div class=seg><div>Never</div><div class=on>7 days</div><div>30 days</div></div>
+<div class=set>Also remove from Real-Debrid<span><span class=sw style="display:inline-block;vertical-align:middle"></span></span></div>
+<div class=set>Keep history after files are deleted<span><span class=sw style="display:inline-block;vertical-align:middle"></span></span></div>
+<div class=sec>Manual</div>
+<div class="btn alt">Clear cache (4.1 GB)</div>
+<div class="btn alt">Delete torrents older than 7 days…</div>
+<div class="btn alt danger">Delete everything</div>
+<div class=sec>Account</div>
+<div class=set>Real-Debrid<span>premium · 55 days left</span></div>
+</div>
+<div class=nav><div><b>＋</b>Add</div><div><b>▶</b>Library</div><div><b>⇣</b>Active</div><div class=on><b>⚙</b>Settings</div></div></div>
+<small>Cleanup you asked for: clear cache, delete by age (7 days, 30 days), and an option to keep the history (titles + timestamps) after the files are gone.</small></div>
+
+</div>
+<div class=note><b>Questions before I build it</b><ol>
+<li><b>Native app or extend foldMov?</b> Your notes show foldMov already exists (Kotlin, Compose, Media3, libtorrent4j, foldable-first). I'd suggest adding this as a new Real-Debrid module there, instead of a second app.</li>
+<li><b>"Remember the link of IINA"</b>: I read this as remembering the streaming link plus your timestamp so you can watch again. Android has no IINA, so the mockup uses a built-in player with an external-player button. Correct?</li>
+<li><b>Where is the token stored?</b> I'd keep it in Android's encrypted storage. You paste it once in Settings.</li>
+<li><b>Subtitles:</b> mockup accepts .srt, .zip or .rar links and places them next to the video. Anything else you need (auto-search by title)?</li>
+<li><b>Cleanup by age</b> is shown as 7 days and 30 days. Do you also want "1 week / 1 month" as separate presets, or is this enough?</li></ol></div>
