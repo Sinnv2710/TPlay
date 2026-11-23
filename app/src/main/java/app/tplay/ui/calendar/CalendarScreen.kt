@@ -25,6 +25,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -36,7 +37,8 @@ import java.time.format.TextStyle
 import java.util.Locale
 
 @Composable
-fun CalendarScreen(viewModel: CalendarViewModel = hiltViewModel()) {
+fun CalendarScreen(onMessage: (String) -> Unit, viewModel: CalendarViewModel = hiltViewModel()) {
+    val context = LocalContext.current
     val month by viewModel.month.collectAsStateWithLifecycle()
     val selected by viewModel.selected.collectAsStateWithLifecycle()
     val entries by viewModel.entries.collectAsStateWithLifecycle()
@@ -89,6 +91,9 @@ fun CalendarScreen(viewModel: CalendarViewModel = hiltViewModel()) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 day.forEach { entry ->
                     Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .clickable { viewModel.play(context, entry.titleId, onMessage) },
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {

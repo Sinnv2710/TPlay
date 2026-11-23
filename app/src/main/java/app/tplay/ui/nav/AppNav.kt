@@ -104,7 +104,7 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
             }
             composable(Dest.Library.route) { LibraryScreen(onMessage = show) }
             composable(Dest.Active.route) { ActiveScreen() }
-            composable(Dest.Calendar.route) { CalendarScreen() }
+            composable(Dest.Calendar.route) { CalendarScreen(onMessage = show) }
             composable(Dest.Settings.route) { SettingsScreen(onMessage = show) }
         }
     }
