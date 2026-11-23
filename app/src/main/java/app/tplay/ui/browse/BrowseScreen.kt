@@ -96,13 +96,22 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                             return !isWebUrl(url)
                         }
 
+                        override fun shouldInterceptRequest(
+                            view: WebView,
+                            request: WebResourceRequest,
+                        ): android.webkit.WebResourceResponse? {
+                            val pageHost = runCatching { java.net.URI(view.url.orEmpty()).host }.getOrNull()
+                            if (!isAdHost(request.url.host, pageHost)) return null
+                            return android.webkit.WebResourceResponse("text/plain", "utf-8", null)
+                        }
+
                         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                             host = runCatching { java.net.URI(url).host }.getOrNull().orEmpty()
-                            view.evaluateJavascript(MAGNET_HOOK_JS, null)
+                            view.evaluateJavascript(MAGNET_HOOK_JS + AD_HIDE_JS, null)
                         }
 
                         override fun onPageFinished(view: WebView, url: String) {
-                            view.evaluateJavascript(MAGNET_HOOK_JS, null)
+                            view.evaluateJavascript(MAGNET_HOOK_JS + AD_HIDE_JS, null)
                         }
 
                         override fun doUpdateVisitedHistory(view: WebView, url: String, isReload: Boolean) {
@@ -121,6 +130,7 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                             isUserGesture: Boolean,
                             resultMsg: Message,
                         ): Boolean {
+                            if (!isUserGesture) return false
                             val probe = WebView(view.context)
                             probe.webViewClient = object : WebViewClient() {
                                 override fun shouldOverrideUrlLoading(v: WebView, r: WebResourceRequest): Boolean {
