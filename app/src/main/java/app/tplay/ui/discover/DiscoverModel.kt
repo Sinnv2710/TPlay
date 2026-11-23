@@ -17,6 +17,19 @@ fun MovieCard.inLibrary(keys: Set<String>): Boolean {
     return names.any { (name, y) -> libraryKey(name, y) in keys || libraryKey(name, null) in keys }
 }
 
-/** Hides cards tagged with an adult option (for example the genre "18+") unless the user allowed them. */
-fun List<MovieCard>.visibleFor(adultOptions: List<String>, showAdult: Boolean): List<MovieCard> =
-    if (showAdult || adultOptions.isEmpty()) this else filterNot { card -> adultOptions.any { card.genres.contains(it) } }
+/**
+ * Hides adult cards unless the user allowed them: a genre equal to an adult option (for example "18+"), or a whole word
+ * from [adultWords] in the title or genres.
+ */
+fun List<MovieCard>.visibleFor(adultOptions: List<String>, adultWords: List<String>, showAdult: Boolean): List<MovieCard> {
+    if (showAdult || (adultOptions.isEmpty() && adultWords.isEmpty())) return this
+    val words = adultWords.map { Regex("(?i)(?<![a-z0-9])" + Regex.escape(it) + "(?![a-z0-9])") }
+    return filterNot { card ->
+        adultOptions.any { card.genres.contains(it) } || words.any { it.containsMatchIn(card.title + " " + card.genres) }
+    }
+}
+
+/** Number in a card's info line ("12 seeds" gives 12), or null when the card shows none. */
+fun MovieCard.seeds(): Int? = info?.let { Regex("[0-9]+").find(it)?.value?.toIntOrNull() }
+
+fun List<MovieCard>.withSeedsOnly(on: Boolean): List<MovieCard> = if (on) filter { (it.seeds() ?: 1) > 0 } else this

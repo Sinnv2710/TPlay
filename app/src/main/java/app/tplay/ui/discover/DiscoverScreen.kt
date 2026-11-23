@@ -96,7 +96,11 @@ fun DiscoverScreen(
     var selected by remember { mutableStateOf<MovieCard?>(null) }
     val gridState = rememberLazyGridState()
 
-    EndlessScroll(gridState, state.cards.size) { viewModel.loadMore() }
+    val cards = remember(state.cards, def, showAdult, filters.onlySeeded) {
+        state.cards.visibleFor(def?.adultOptions.orEmpty(), def?.adultWords.orEmpty(), showAdult)
+            .withSeedsOnly(filters.onlySeeded)
+    }
+    EndlessScroll(gridState, cards.size) { viewModel.loadMore() }
     LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (state.challengeUrl != null) viewModel.reload() }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
@@ -144,14 +148,14 @@ fun DiscoverScreen(
                     "The page layout probably changed. Open Manage sources to check for an update, or pick another source.",
                 )
                 state.error != null && state.cards.isEmpty() -> EmptyState("Could not load movies", state.error.orEmpty())
-                state.cards.isEmpty() && !state.loading -> EmptyState("No movies match", "Try removing a filter.")
+                cards.isEmpty() && !state.loading -> EmptyState("No movies match", "Try removing a filter.")
                 else -> LazyVerticalGrid(
                     columns = GridCells.Adaptive(112.dp),
                     state = gridState,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                     verticalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    items(state.cards, key = { it.pageUrl }) { card ->
+                    items(cards, key = { it.pageUrl }) { card ->
                         MovieTile(card, card.inLibrary(keys)) {
                             viewModel.openCard()
                             selected = card
@@ -228,6 +232,9 @@ private fun ActiveFilters(
             label = { Text(if (filters.activeCount > 0) "Filters (${filters.activeCount})" else "Filters") },
             leadingIcon = { Icon(Icons.Filled.Tune, contentDescription = null) },
         )
+        if (filters.onlySeeded) {
+            FilterChip(selected = true, onClick = { viewModel.setOnlySeeded(false) }, label = { Text("With seeds  ✕") })
+        }
         def?.filters?.forEach { filter ->
             val value = filters.values[filter.param].orEmpty()
             if (value.isNotBlank()) {
@@ -285,6 +292,23 @@ private fun FilterSheet(
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState())) {
             Text("Filters", style = MaterialTheme.typography.titleMedium)
+            ToggleRow("Show adult titles", "Hidden by default", showAdult, viewModel::setShowAdult)
+            if (def.list.fields.containsKey("info")) {
+                ToggleRow(
+                    "Only titles with seeds",
+                    "Hide releases nobody is sharing",
+                    filters.onlySeeded,
+                    viewModel::setOnlySeeded,
+                )
+            }
+            if (def.filters.isEmpty()) {
+                Text(
+                    "This source has no genre or year filters. Use the search box.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = 8.dp),
+                )
+            }
             def.filters.forEach { filter ->
                 val options = filter.options.filter { showAdult || it !in def.adultOptions }
                 ChoiceGroup(
@@ -489,5 +513,19 @@ private fun CheckPanel(url: String, onOpenBrowser: (String?) -> Unit, onTryAgain
         )
         Button(onClick = { onOpenBrowser(url) }) { Text("Open browser") }
         TextButton(onClick = onTryAgain) { Text("Try again") }
+    }
+}
+
+@Composable
+private fun ToggleRow(title: String, hint: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().clickable { onChange(!checked) }.padding(top = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(Modifier.weight(1f)) {
+            Text(title, style = MaterialTheme.typography.bodyLarge)
+            Text(hint, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        androidx.compose.material3.Switch(checked, onChange)
     }
 }

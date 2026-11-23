@@ -46,6 +46,8 @@ class SourceEngineTest {
         assertEquals(0, DiscoverFilters(keyword = "x").activeCount)
         assertEquals(2, DiscoverFilters().with("genre", "Action").with("rating", "7").activeCount)
         assertEquals(1, DiscoverFilters().with("genre", "Action").with("genre", "").with("year", "2025").activeCount)
+        assertEquals(1, DiscoverFilters(onlySeeded = true).activeCount)
+        assertEquals(0, DiscoverFilters(onlySeeded = true).cleared().activeCount)
     }
 
     @Test fun readsCardsFromACataloguePage() {

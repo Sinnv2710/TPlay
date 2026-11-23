@@ -18,6 +18,8 @@ data class SourceDef(
     val detail: DetailDef,
     /** Filter option values (for example a genre) that stay hidden until the user allows them. */
     val adultOptions: List<String> = emptyList(),
+    /** Words that mark a card as adult when they appear in its title or genres (for sites with no genre filter). */
+    val adultWords: List<String> = emptyList(),
 )
 
 @Serializable

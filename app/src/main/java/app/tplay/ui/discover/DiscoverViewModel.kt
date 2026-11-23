@@ -75,8 +75,9 @@ class DiscoverViewModel @Inject constructor(
 
     init {
         viewModelScope.launch {
-            combine(current, settings.showAdult()) { def, adult -> "${def?.id}:${def?.version}:$adult" }.collect { key ->
-                val otherSource = loadedKey?.substringBefore(':') != key.substringBefore(':')
+            current.collect { def ->
+                val key = "${def?.id}:${def?.version}"
+                val otherSource = loadedKey?.substringBefore(':') != def?.id
                 if (key != loadedKey) reload(resetFilters = otherSource)
             }
         }
@@ -85,6 +86,10 @@ class DiscoverViewModel @Inject constructor(
     fun search(text: String) = change { it.copy(keyword = text) }
     fun setFilter(param: String, value: String) = change { it.with(param, value) }
     fun reset() = change { it.cleared() }
+    fun setOnlySeeded(on: Boolean) = change { it.copy(onlySeeded = on) }
+    fun setShowAdult(on: Boolean) {
+        viewModelScope.launch { settings.setShowAdult(on) }
+    }
     fun select(id: String) {
         viewModelScope.launch { store.select(id) }
     }
@@ -121,12 +126,11 @@ class DiscoverViewModel @Inject constructor(
         }
         loadJob = viewModelScope.launch {
             state.update { it.copy(loading = true) }
-            val adult = settings.showAdult().first()
-            loadedKey = "${def.id}:${def.version}:$adult"
+            loadedKey = "${def.id}:${def.version}"
             when (val result = client.page(def, filters.value, page)) {
                 is PageResult.Ok -> {
                     if (result.cards.isNotEmpty()) store.report(def.id, HealthLevel.OK, "Loaded ${result.cards.size} movies")
-                    val shown = result.cards.visibleFor(def.adultOptions, adult)
+                    val shown = result.cards
                     state.update {
                         val merged = (it.cards + shown).distinctBy { c -> c.pageUrl }
                         it.copy(cards = merged, loading = false, hasNext = result.hasNext, error = null)

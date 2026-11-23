@@ -4,13 +4,15 @@ package app.tplay.data.discover
 data class DiscoverFilters(
     val keyword: String = "",
     val values: Map<String, String> = emptyMap(),
+    /** Local filter, not sent to the site: hide cards that show 0 seeds. */
+    val onlySeeded: Boolean = false,
 ) {
-    val activeCount: Int get() = values.values.count { it.isNotBlank() }
+    val activeCount: Int get() = values.values.count { it.isNotBlank() } + if (onlySeeded) 1 else 0
 
     fun with(param: String, value: String): DiscoverFilters =
         copy(values = if (value.isBlank()) values - param else values + (param to value))
 
-    fun cleared(): DiscoverFilters = copy(values = emptyMap())
+    fun cleared(): DiscoverFilters = copy(values = emptyMap(), onlySeeded = false)
 }
 
 data class MovieCard(
