@@ -41,8 +41,6 @@ fun interface TitleCleaner {
     suspend fun clean(cutoffMillis: Long, keepHistory: Boolean): Int
 }
 
-const val DEFAULT_DISCOVER_SITE = "https://en.yts-official.com"
-
 class SettingsRepositoryImpl(
     private val context: Context,
     private val titleCleaner: TitleCleaner? = null,
@@ -55,7 +53,6 @@ class SettingsRepositoryImpl(
     private val wifiOnlyKey = booleanPreferencesKey("wifi_only")
     private val playerKey = stringPreferencesKey("player")
     private val browseKey = stringPreferencesKey("browse_start")
-    private val discoverKey = stringPreferencesKey("discover_site")
     private val adultKey = booleanPreferencesKey("show_adult")
 
     override fun cleanupPolicy(): Flow<CleanupPolicy> = store.data.map { preferences ->
@@ -101,12 +98,6 @@ class SettingsRepositoryImpl(
 
     override suspend fun setBrowseStartPage(value: String) {
         store.edit { preferences -> preferences[browseKey] = value.trim() }
-    }
-
-    override fun discoverSite(): Flow<String> = store.data.map { it[discoverKey] ?: DEFAULT_DISCOVER_SITE }
-
-    override suspend fun setDiscoverSite(value: String) {
-        store.edit { it[discoverKey] = value.trim() }
     }
 
     override fun showAdult(): Flow<Boolean> = store.data.map { it[adultKey] ?: false }

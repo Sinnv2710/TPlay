@@ -62,7 +62,11 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tplay.data.discover.DiscoverFilters
 import app.tplay.data.discover.MovieCard
 import app.tplay.data.discover.Release
+import app.tplay.data.source.SourceDef
+import app.tplay.data.source.SourceInfo
+import androidx.compose.material.icons.filled.ArrowDropDown
 import app.tplay.ui.common.EmptyState
+import app.tplay.ui.common.HealthDot
 import app.tplay.ui.common.ScreenTitle
 import app.tplay.ui.common.Tag
 import coil.compose.AsyncImage
@@ -70,6 +74,7 @@ import coil.compose.AsyncImage
 @Composable
 fun DiscoverScreen(
     onOpenBrowser: () -> Unit,
+    onManageSources: () -> Unit,
     onStarted: () -> Unit,
     onMessage: (String) -> Unit,
     viewModel: DiscoverViewModel = hiltViewModel(),
@@ -77,7 +82,9 @@ fun DiscoverScreen(
     val state by viewModel.state.collectAsStateWithLifecycle()
     val filters by viewModel.filters.collectAsStateWithLifecycle()
     val showAdult by viewModel.showAdult.collectAsStateWithLifecycle()
-    val site by viewModel.site.collectAsStateWithLifecycle()
+    val def by viewModel.current.collectAsStateWithLifecycle()
+    val sources by viewModel.sources.collectAsStateWithLifecycle()
+    var picker by remember { mutableStateOf(false) }
     val keys by viewModel.inLibrary.collectAsStateWithLifecycle()
     val releases by viewModel.releases.collectAsStateWithLifecycle()
     var query by remember(filters.keyword) { mutableStateOf(filters.keyword) }
@@ -91,11 +98,19 @@ fun DiscoverScreen(
         Row(verticalAlignment = Alignment.CenterVertically) {
             Column(Modifier.weight(1f)) {
                 ScreenTitle("Discover")
-                Text(
-                    site.removePrefix("https://").removePrefix("http://").trimEnd('/'),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
+                val health = sources.firstOrNull { it.def.id == def?.id }?.health
+                Row(
+                    Modifier.clickable { picker = true }.padding(vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HealthDot(health?.level)
+                    Text(
+                        def?.name ?: "No source",
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(start = 6.dp),
+                    )
+                    Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose source")
+                }
             }
             IconButton(onClick = onOpenBrowser) {
                 Icon(Icons.Filled.Language, contentDescription = "Open the browser")
@@ -115,12 +130,12 @@ fun DiscoverScreen(
             keyboardActions = KeyboardActions(onSearch = { viewModel.search(query) }),
             modifier = Modifier.fillMaxWidth(),
         )
-        ActiveFilters(filters, showAdult, onOpenSheet = { sheet = true }, viewModel = viewModel)
+        ActiveFilters(def, filters, onOpenSheet = { sheet = true }, viewModel = viewModel)
         Box(Modifier.fillMaxSize()) {
             when {
                 state.unsupported -> EmptyState(
-                    "This site is not supported yet",
-                    "Discover reads sites that look like en.yts-official.com. You can still use the browser.",
+                    "This source stopped matching its site",
+                    "The page layout probably changed. Open Manage sources to check for an update, or pick another source.",
                 )
                 state.error != null && state.cards.isEmpty() -> EmptyState("Could not load movies", state.error.orEmpty())
                 state.cards.isEmpty() && !state.loading -> EmptyState("No movies match", "Try removing a filter.")
@@ -142,7 +157,22 @@ fun DiscoverScreen(
         }
     }
 
-    if (sheet) FilterSheet(filters, showAdult, viewModel) { sheet = false }
+    if (picker) {
+        SourceSheet(
+            sources = sources.filter { it.enabled },
+            selectedId = def?.id,
+            onPick = {
+                viewModel.select(it)
+                picker = false
+            },
+            onManage = {
+                picker = false
+                onManageSources()
+            },
+            onClose = { picker = false },
+        )
+    }
+    if (sheet) def?.let { FilterSheet(it, filters, showAdult, viewModel) { sheet = false } }
     selected?.let { card ->
         DetailSheet(
             card = card,
@@ -174,8 +204,8 @@ private fun EndlessScroll(state: LazyGridState, count: Int, onEnd: () -> Unit) {
 
 @Composable
 private fun ActiveFilters(
+    def: SourceDef?,
     filters: DiscoverFilters,
-    showAdult: Boolean,
     onOpenSheet: () -> Unit,
     viewModel: DiscoverViewModel,
 ) {
@@ -190,25 +220,17 @@ private fun ActiveFilters(
             label = { Text(if (filters.activeCount > 0) "Filters (${filters.activeCount})" else "Filters") },
             leadingIcon = { Icon(Icons.Filled.Tune, contentDescription = null) },
         )
-        if (filters.genre.isNotBlank()) RemovableChip(filters.genre) { viewModel.setGenre("") }
-        if (filters.year.isNotBlank()) {
-            RemovableChip(DiscoverOptions.years.firstOrNull { it.first == filters.year }?.second ?: filters.year) {
-                viewModel.setYear("")
-            }
-        }
-        if (filters.quality.isNotBlank()) RemovableChip(filters.quality) { viewModel.setQuality("") }
-        if (filters.rating.isNotBlank()) RemovableChip("${filters.rating}+") { viewModel.setRating("") }
-        if (filters.orderBy.isNotBlank()) {
-            RemovableChip(DiscoverOptions.sorts.firstOrNull { it.first == filters.orderBy }?.second ?: filters.orderBy) {
-                viewModel.setOrder("")
+        def?.filters?.forEach { filter ->
+            val value = filters.values[filter.param].orEmpty()
+            if (value.isNotBlank()) {
+                FilterChip(
+                    selected = true,
+                    onClick = { viewModel.setFilter(filter.param, "") },
+                    label = { Text("${filter.labelOf(value)}  ✕") },
+                )
             }
         }
     }
-}
-
-@Composable
-private fun RemovableChip(label: String, onRemove: () -> Unit) {
-    FilterChip(selected = true, onClick = onRemove, label = { Text("$label  ✕") })
 }
 
 @Composable
@@ -243,15 +265,24 @@ private fun MovieTile(card: MovieCard, inLibrary: Boolean, onClick: () -> Unit) 
 }
 
 @Composable
-private fun FilterSheet(filters: DiscoverFilters, showAdult: Boolean, viewModel: DiscoverViewModel, onClose: () -> Unit) {
+private fun FilterSheet(
+    def: SourceDef,
+    filters: DiscoverFilters,
+    showAdult: Boolean,
+    viewModel: DiscoverViewModel,
+    onClose: () -> Unit,
+) {
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState())) {
             Text("Filters", style = MaterialTheme.typography.titleMedium)
-            ChoiceGroup("Genre", DiscoverOptions.genresFor(showAdult).map { it to it }, filters.genre, viewModel::setGenre)
-            ChoiceGroup("Year", DiscoverOptions.years, filters.year, viewModel::setYear)
-            ChoiceGroup("Quality", DiscoverOptions.qualities.map { it to it }, filters.quality, viewModel::setQuality)
-            ChoiceGroup("Minimum rating", DiscoverOptions.ratings, filters.rating, viewModel::setRating)
-            ChoiceGroup("Sort by", DiscoverOptions.sorts, filters.orderBy, viewModel::setOrder)
+            def.filters.forEach { filter ->
+                val options = filter.options.filter { showAdult || it !in def.adultOptions }
+                ChoiceGroup(
+                    filter.name,
+                    options.map { it to filter.labelOf(it) },
+                    filters.values[filter.param].orEmpty(),
+                ) { viewModel.setFilter(filter.param, it) }
+            }
             Row(Modifier.padding(top = 16.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = onClose, modifier = Modifier.weight(1f)) { Text("Show results") }
                 OutlinedButton(onClick = viewModel::reset) { Text("Reset") }
@@ -271,6 +302,41 @@ private fun ChoiceGroup(title: String, options: List<Pair<String, String>>, chos
                 onClick = { onPick(if (chosen == value) "" else value) },
                 label = { Text(label) },
             )
+        }
+    }
+}
+
+@Composable
+private fun SourceSheet(
+    sources: List<SourceInfo>,
+    selectedId: String?,
+    onPick: (String) -> Unit,
+    onManage: () -> Unit,
+    onClose: () -> Unit,
+) {
+    ModalBottomSheet(onDismissRequest = onClose) {
+        Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp)) {
+            Text("Source", style = MaterialTheme.typography.titleMedium)
+            sources.forEach { info ->
+                Row(
+                    Modifier.fillMaxWidth().clickable { onPick(info.def.id) }.padding(vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    HealthDot(info.health?.level)
+                    Column(Modifier.weight(1f).padding(start = 10.dp)) {
+                        Text(info.def.name, style = MaterialTheme.typography.bodyLarge)
+                        Text(
+                            info.health?.message ?: info.def.site.removePrefix("https://"),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                    if (info.def.id == selectedId) Text("✓")
+                }
+            }
+            OutlinedButton(onClick = onManage, modifier = Modifier.fillMaxWidth().padding(top = 8.dp)) {
+                Text("Manage sources…")
+            }
         }
     }
 }

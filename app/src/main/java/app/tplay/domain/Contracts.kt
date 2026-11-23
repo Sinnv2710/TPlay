@@ -98,10 +98,6 @@ interface SettingsRepository {
     fun browseStartPage(): Flow<String>
     suspend fun setBrowseStartPage(value: String)
 
-    /** Site the Discover tab reads its movie list from (web address). */
-    fun discoverSite(): Flow<String>
-    suspend fun setDiscoverSite(value: String)
-
     /** Whether the 18+ genre is offered in Discover. Off by default. */
     fun showAdult(): Flow<Boolean>
     suspend fun setShowAdult(value: Boolean)

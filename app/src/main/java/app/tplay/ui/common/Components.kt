@@ -97,3 +97,15 @@ fun EmptyState(title: String, hint: String) {
         Text(hint, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
 }
+
+/** Small status dot: green works, yellow needs attention, red failed, grey unknown. */
+@Composable
+fun HealthDot(level: app.tplay.data.source.HealthLevel?) {
+    val color = when (level) {
+        app.tplay.data.source.HealthLevel.OK -> Color(0xFF4ADE80)
+        app.tplay.data.source.HealthLevel.WARN -> Color(0xFFFBBF24)
+        app.tplay.data.source.HealthLevel.FAIL -> Color(0xFFF87171)
+        null -> Color(0xFF6B7280)
+    }
+    Box(Modifier.size(10.dp).background(color, androidx.compose.foundation.shape.CircleShape))
+}

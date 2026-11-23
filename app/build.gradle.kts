@@ -31,6 +31,7 @@ android { namespace = "app.tplay"; compileSdk = 36
 }
 
 dependencies {
+    implementation(libs.jsoup)
     implementation(platform(libs.compose.bom)); implementation("androidx.window:window:1.4.0"); implementation(libs.compose.material3); implementation("androidx.compose.material:material-icons-extended"); implementation("androidx.hilt:hilt-navigation-compose:1.2.0"); implementation("androidx.documentfile:documentfile:1.0.1"); implementation(libs.compose.ui); implementation(libs.activity.compose); implementation(libs.lifecycle.runtime); implementation(libs.navigation.compose)
     implementation(libs.media3.exoplayer); implementation(libs.media3.ui); implementation(libs.media3.session); implementation(libs.room.runtime); implementation(libs.room.ktx); ksp(libs.room.compiler); implementation(libs.datastore); implementation(libs.work); implementation(libs.hilt.android); ksp(libs.hilt.compiler); implementation(libs.okhttp); implementation(libs.serialization.json); implementation(libs.coil.compose); implementation(libs.junrar); implementation(libs.biometric); implementation(libs.coroutines)
     testImplementation(libs.junit); testImplementation(libs.mockk); testImplementation(libs.turbine); testImplementation(libs.coroutines); testImplementation(libs.coroutines.test); testImplementation(libs.mockwebserver)

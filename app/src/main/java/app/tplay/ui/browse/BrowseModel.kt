@@ -50,11 +50,3 @@ const val JS_BRIDGE_NAME = "TPlay"
 /** The page to open: the saved start page when it is a web address, otherwise the blank hint page. */
 fun startUrl(saved: String): String = if (isWebUrl(saved.trim())) saved.trim() else BLANK_PAGE
 
-/** Scheme and host of a web address ("https://en.example.com"), or null when it is not a plain web page. */
-fun siteOf(url: String?): String? {
-    val text = url?.trim().orEmpty()
-    if (!isWebUrl(text)) return null
-    val uri = runCatching { URI(text) }.getOrNull() ?: return null
-    val host = uri.host ?: return null
-    return uri.scheme.lowercase() + "://" + host.lowercase()
-}

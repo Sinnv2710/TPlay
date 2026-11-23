@@ -1,0 +1,44 @@
+{
+  "id": "yts",
+  "name": "YTS (en.yts-official.com)",
+  "version": 1,
+  "site": "https://en.yts-official.com",
+  "language": "en",
+  "list": {
+    "path": "/movies?keyword={keyword}&genre={genre}&year={year}&quality={quality}&rating={rating}&order_by={order_by}&page={page}",
+    "card": "div.card[data-kind=movies]",
+    "next": "a[rel=next]",
+    "fields": {
+      "title": "h3",
+      "year": "p span:nth-child(1)",
+      "genres": "p span:nth-child(2)",
+      "poster": "img@src",
+      "posterFallback": "img@data-fb",
+      "rating": "span[title^=Rating]",
+      "quality": ".pill[class*=q-]",
+      "link": "a.block@href"
+    }
+  },
+  "filters": [
+    {"name": "Genre", "param": "genre", "options": ["18+", "Action", "Adventure", "Animation", "Biography", "Comedy", "Crime", "Documentary", "Drama", "Family", "Fantasy", "Film-Noir", "History", "Horror", "Music", "Musical", "Mystery", "Romance", "Sci-Fi", "Sport", "Thriller", "War", "Western"]},
+    {"name": "Year", "param": "year", "options": ["2020-2029", "2010-2019", "2000-2009", "1990-1999", "1980-1989", "2027", "2026", "2025", "2024", "2023", "2022", "2021", "2020"],
+     "labels": {"2020-2029": "2020s", "2010-2019": "2010s", "2000-2009": "2000s", "1990-1999": "1990s", "1980-1989": "1980s"}},
+    {"name": "Quality", "param": "quality", "options": ["720p", "1080p", "2160p", "3D"]},
+    {"name": "Minimum rating", "param": "rating", "options": ["5", "6", "7", "8", "9"],
+     "labels": {"5": "5+", "6": "6+", "7": "7+", "8": "8+", "9": "9+"}},
+    {"name": "Sort by", "param": "order_by", "options": ["latest", "released", "rating", "downloads", "year", "alphabetical", "oldest"],
+     "labels": {"latest": "Latest", "released": "Released", "rating": "Rating", "downloads": "Downloads", "year": "Year", "alphabetical": "A to Z", "oldest": "Oldest"}}
+  ],
+  "detail": {
+    "release": "li:has(a[href^=magnet:])",
+    "fields": {
+      "name": "[title=Release name]",
+      "size": ".rsize",
+      "seeds": "b.num",
+      "magnet": "a[href^=magnet:]@href"
+    },
+    "synopsis": "meta[name=description]@content",
+    "synopsisAfter": " on YTS. "
+  },
+  "adultOptions": ["18+"]
+}

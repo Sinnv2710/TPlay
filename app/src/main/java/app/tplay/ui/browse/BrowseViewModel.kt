@@ -18,12 +18,5 @@ class BrowseViewModel @Inject constructor(private val settings: SettingsReposito
             last = value
         }
 
-    /** Makes the site of [url] the one Discover reads. Returns the site, or null if [url] is not a web page. */
-    suspend fun useForDiscover(url: String?): String? {
-        val site = siteOf(url) ?: return null
-        settings.setDiscoverSite(site)
-        return site
-    }
-
     fun startPage(): String = startUrl(runBlocking { settings.browseStartPage().first() })
 }

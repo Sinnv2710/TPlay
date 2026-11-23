@@ -8,6 +8,10 @@ import app.tplay.data.discover.MovieCard
 import app.tplay.data.discover.PageResult
 import app.tplay.data.discover.Release
 import app.tplay.data.discover.ReleasesResult
+import app.tplay.data.source.HealthLevel
+import app.tplay.data.source.SourceDef
+import app.tplay.data.source.SourceInfo
+import app.tplay.data.source.SourceStore
 import app.tplay.domain.JobRepository
 import app.tplay.domain.LibraryRepository
 import app.tplay.domain.SettingsRepository
@@ -44,6 +48,7 @@ class DiscoverViewModel @Inject constructor(
     private val client: DiscoverClient,
     private val settings: SettingsRepository,
     private val jobs: JobRepository,
+    private val store: SourceStore,
     library: LibraryRepository,
 ) : ViewModel() {
     val filters = MutableStateFlow(DiscoverFilters())
@@ -51,70 +56,82 @@ class DiscoverViewModel @Inject constructor(
     val releases = MutableStateFlow<ReleasesState>(ReleasesState.Idle)
     val showAdult: StateFlow<Boolean> = settings.showAdult()
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), false)
-    val site: StateFlow<String> = settings.discoverSite()
-        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), "")
+    val sources: StateFlow<List<SourceInfo>> = combine(store.state, store.health) { s, h -> store.sources(s, h) }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, store.sources())
+    val current: StateFlow<SourceDef?> = store.state.map { store.current() }
+        .stateIn(viewModelScope, SharingStarted.Eagerly, store.current())
     val inLibrary: StateFlow<Set<String>> = library.titles().map(::libraryKeys)
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000), emptySet())
 
     private var page = 1
     private var loadJob: Job? = null
-    private var loadedSite: String? = null
-    private var loadedAdult: Boolean? = null
+    private var loadedKey: String? = null
 
     init {
         viewModelScope.launch {
-            combine(settings.discoverSite(), settings.showAdult()) { s, adult -> s to adult }.collect { (s, adult) ->
-                if (s != loadedSite || adult != loadedAdult) reload()
+            combine(current, settings.showAdult()) { def, adult -> "${def?.id}:${def?.version}:$adult" }.collect { key ->
+                val otherSource = loadedKey?.substringBefore(':') != key.substringBefore(':')
+                if (key != loadedKey) reload(resetFilters = otherSource)
             }
         }
     }
 
-    fun search(text: String) = apply { it.copy(keyword = text) }
+    fun search(text: String) = change { it.copy(keyword = text) }
+    fun setFilter(param: String, value: String) = change { it.with(param, value) }
+    fun reset() = change { it.cleared() }
+    fun select(id: String) {
+        viewModelScope.launch { store.select(id) }
+    }
 
-    fun setGenre(value: String) = apply { it.copy(genre = value) }
-    fun setYear(value: String) = apply { it.copy(year = value) }
-    fun setQuality(value: String) = apply { it.copy(quality = value) }
-    fun setRating(value: String) = apply { it.copy(rating = value) }
-    fun setOrder(value: String) = apply { it.copy(orderBy = value) }
-    fun reset() = apply { it.copy(genre = "", year = "", quality = "", rating = "", orderBy = "") }
-
-    private fun apply(change: (DiscoverFilters) -> DiscoverFilters) {
-        val next = change(filters.value)
+    private fun change(edit: (DiscoverFilters) -> DiscoverFilters) {
+        val next = edit(filters.value)
         if (next == filters.value) return
         filters.value = next
         reload()
     }
 
-    fun reload() {
+    fun reload(resetFilters: Boolean = false) {
+        if (resetFilters) filters.value = DiscoverFilters()
         page = 1
         state.update { it.copy(cards = emptyList(), hasNext = false, error = null, unsupported = false) }
         load()
     }
 
     fun loadMore() {
-        val current = state.value
-        if (current.loading || !current.hasNext) return
+        val now = state.value
+        if (now.loading || !now.hasNext) return
         page += 1
         load()
     }
 
     private fun load() {
         loadJob?.cancel()
+        val def = store.current()
+        if (def == null) {
+            state.update { it.copy(loading = false, error = "No source is switched on") }
+            return
+        }
         loadJob = viewModelScope.launch {
             state.update { it.copy(loading = true) }
-            val site = settings.discoverSite().first()
-            loadedSite = site
-            loadedAdult = settings.showAdult().first()
-            when (val result = client.page(site, filters.value, page)) {
+            val adult = settings.showAdult().first()
+            loadedKey = "${def.id}:${def.version}:$adult"
+            when (val result = client.page(def, filters.value, page)) {
                 is PageResult.Ok -> {
-                    val adult = settings.showAdult().first()
+                    if (result.cards.isNotEmpty()) store.report(def.id, HealthLevel.OK, "Loaded ${result.cards.size} movies")
+                    val shown = result.cards.visibleFor(def.adultOptions, adult)
                     state.update {
-                        val merged = (it.cards + result.cards.visibleFor(adult)).distinctBy { c -> c.pageUrl }
+                        val merged = (it.cards + shown).distinctBy { c -> c.pageUrl }
                         it.copy(cards = merged, loading = false, hasNext = result.hasNext, error = null)
                     }
                 }
-                PageResult.Unsupported -> state.update { it.copy(loading = false, unsupported = true) }
-                is PageResult.Failure -> state.update { it.copy(loading = false, error = result.message) }
+                PageResult.Unsupported -> {
+                    store.report(def.id, HealthLevel.WARN, "No movie cards found. The site may have changed.")
+                    state.update { it.copy(loading = false, unsupported = true) }
+                }
+                is PageResult.Failure -> {
+                    store.report(def.id, HealthLevel.FAIL, result.message)
+                    state.update { it.copy(loading = false, error = result.message) }
+                }
             }
         }
     }
@@ -124,10 +141,10 @@ class DiscoverViewModel @Inject constructor(
     }
 
     fun loadReleases(card: MovieCard) {
+        val def = store.current() ?: return
         releases.value = ReleasesState.Loading
         viewModelScope.launch {
-            val site = settings.discoverSite().first()
-            releases.value = when (val result = client.releases(site, card.pageUrl)) {
+            releases.value = when (val result = client.releases(def, card.pageUrl)) {
                 is ReleasesResult.Ok -> ReleasesState.Ready(result.synopsis, result.releases)
                 is ReleasesResult.Failure -> ReleasesState.Failed(result.message)
             }

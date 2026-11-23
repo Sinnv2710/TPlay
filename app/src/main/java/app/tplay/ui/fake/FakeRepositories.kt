@@ -78,10 +78,7 @@ class FakeSettingsRepository : SettingsRepository {
     private val player = MutableStateFlow("builtin")
     override fun browseStartPage(): Flow<String> = MutableStateFlow("")
     override suspend fun setBrowseStartPage(value: String) = Unit
-    private val site = MutableStateFlow("https://en.yts-official.com")
     private val adult = MutableStateFlow(false)
-    override fun discoverSite() = site
-    override suspend fun setDiscoverSite(value: String) { site.value = value }
     override fun showAdult() = adult
     override suspend fun setShowAdult(value: Boolean) { adult.value = value }
     override fun cleanupPolicy() = policy

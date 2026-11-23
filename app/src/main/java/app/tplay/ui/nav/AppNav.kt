@@ -35,11 +35,14 @@ import app.tplay.ui.add.AddScreen
 import app.tplay.ui.browse.BrowseScreen
 import app.tplay.ui.calendar.CalendarScreen
 import app.tplay.ui.discover.DiscoverScreen
+import app.tplay.ui.discover.ManageSourcesScreen
 import app.tplay.ui.library.LibraryScreen
 import app.tplay.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 private const val BROWSE_ROUTE = "browse"
+private const val SOURCES_ROUTE = "sources"
+private val OVERLAY_ROUTES = setOf(BROWSE_ROUTE, SOURCES_ROUTE)
 
 private enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Add("add", "Add", Icons.Filled.Add),
@@ -62,7 +65,7 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
     /** Switches to a bottom-bar tab the same way tapping it does, so tabs never stack on each other. */
     val goTab: (String) -> Unit = { route ->
         // Browse is a page on top of a tab, not a tab: drop it first so it is never saved into the tab's stack.
-        if (nav.currentDestination?.route == BROWSE_ROUTE) nav.popBackStack()
+        if (nav.currentDestination?.route in OVERLAY_ROUTES) nav.popBackStack()
         nav.navigate(route) {
             popUpTo(nav.graph.findStartDestination().id) { saveState = true }
             launchSingleTop = true
@@ -106,6 +109,7 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
             composable(Dest.Discover.route) {
                 DiscoverScreen(
                     onOpenBrowser = { nav.navigate(BROWSE_ROUTE) { launchSingleTop = true } },
+                    onManageSources = { nav.navigate(SOURCES_ROUTE) { launchSingleTop = true } },
                     onStarted = {
                         show("Sent to Real-Debrid")
                         goTab(Dest.Active.route)
@@ -119,11 +123,10 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
                         picked = magnet
                         goTab(Dest.Add.route)
                     },
-                    onDiscoverSite = { site ->
-                        show("Discover now reads ${site.substringAfter("://")}")
-                        nav.popBackStack(Dest.Discover.route, inclusive = false)
-                    },
                 )
+            }
+            composable(SOURCES_ROUTE) {
+                ManageSourcesScreen(onBack = { nav.popBackStack() }, onMessage = show)
             }
             composable(Dest.Library.route) { LibraryScreen(onMessage = show) }
             composable(Dest.Active.route) { ActiveScreen() }
