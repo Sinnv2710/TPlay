@@ -46,6 +46,8 @@ fun SettingsScreen(onMessage: (String) -> Unit, viewModel: SettingsViewModel = h
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val player by viewModel.player.collectAsStateWithLifecycle()
     val startPage by viewModel.startPage.collectAsStateWithLifecycle()
+    val discoverSite by viewModel.discoverSite.collectAsStateWithLifecycle()
+    val showAdult by viewModel.showAdult.collectAsStateWithLifecycle()
     val used by viewModel.usedBytes.collectAsStateWithLifecycle()
     val cache by viewModel.cacheBytes.collectAsStateWithLifecycle()
     val services by viewModel.services.collectAsStateWithLifecycle()
@@ -132,6 +134,14 @@ fun SettingsScreen(onMessage: (String) -> Unit, viewModel: SettingsViewModel = h
         )
         TextButton(onClick = { viewModel.setStartPage(startDraft) }) { Text("Save start page") }
 
+        SectionLabel("Discover")
+        Text(
+            "Movie list source: " + discoverSite.removePrefix("https://").removePrefix("http://").trimEnd('/') +
+                ". To change it, open the globe in Discover, go to the site and tap Use in Discover.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        SwitchRow("Show the 18+ genre", showAdult, viewModel::setShowAdult)
         SectionLabel("Services and tokens")
         Text(
             "Stored encrypted on this phone. Real-Debrid is required; the others unlock subtitles and metadata.",

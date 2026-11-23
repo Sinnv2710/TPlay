@@ -5,7 +5,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.CalendarMonth
-import androidx.compose.material.icons.filled.Language
+import androidx.compose.material.icons.filled.Explore
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.PlayCircle
 import androidx.compose.material.icons.filled.Settings
@@ -34,13 +34,16 @@ import app.tplay.ui.active.ActiveScreen
 import app.tplay.ui.add.AddScreen
 import app.tplay.ui.browse.BrowseScreen
 import app.tplay.ui.calendar.CalendarScreen
+import app.tplay.ui.discover.DiscoverScreen
 import app.tplay.ui.library.LibraryScreen
 import app.tplay.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
+private const val BROWSE_ROUTE = "browse"
+
 private enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Add("add", "Add", Icons.Filled.Add),
-    Browse("browse", "Browse", Icons.Filled.Language),
+    Discover("discover", "Discover", Icons.Filled.Explore),
     Library("library", "Library", Icons.Filled.PlayCircle),
     Active("active", "Active", Icons.Filled.Download),
     Calendar("calendar", "Calendar", Icons.Filled.CalendarMonth),
@@ -56,9 +59,19 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
     val current = backStack?.destination?.route
     var picked by remember { mutableStateOf<String?>(null) }
     val show: (String) -> Unit = { text -> scope.launch { snackbar.showSnackbar(text) } }
+    /** Switches to a bottom-bar tab the same way tapping it does, so tabs never stack on each other. */
+    val goTab: (String) -> Unit = { route ->
+        // Browse is a page on top of a tab, not a tab: drop it first so it is never saved into the tab's stack.
+        if (nav.currentDestination?.route == BROWSE_ROUTE) nav.popBackStack()
+        nav.navigate(route) {
+            popUpTo(nav.graph.findStartDestination().id) { saveState = true }
+            launchSingleTop = true
+            restoreState = true
+        }
+    }
 
     LaunchedEffect(incomingMagnet) {
-        if (incomingMagnet != null) nav.navigate(Dest.Add.route) { launchSingleTop = true }
+        if (incomingMagnet != null) goTab(Dest.Add.route)
     }
 
     Scaffold(
@@ -68,13 +81,7 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
                 Dest.entries.forEach { dest ->
                     NavigationBarItem(
                         selected = current == dest.route,
-                        onClick = {
-                            nav.navigate(dest.route) {
-                                popUpTo(nav.graph.findStartDestination().id) { saveState = true }
-                                launchSingleTop = true
-                                restoreState = true
-                            }
-                        },
+                        onClick = { goTab(dest.route) },
                         icon = { Icon(dest.icon, contentDescription = dest.label) },
                         label = { Text(dest.label) },
                     )
@@ -92,15 +99,31 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
                     },
                     onStarted = {
                         show("Sent to Real-Debrid")
-                        nav.navigate(Dest.Active.route)
+                        goTab(Dest.Active.route)
                     },
                 )
             }
-            composable(Dest.Browse.route) {
-                BrowseScreen(onMagnet = { magnet ->
-                    picked = magnet
-                    nav.navigate(Dest.Add.route) { launchSingleTop = true }
-                })
+            composable(Dest.Discover.route) {
+                DiscoverScreen(
+                    onOpenBrowser = { nav.navigate(BROWSE_ROUTE) { launchSingleTop = true } },
+                    onStarted = {
+                        show("Sent to Real-Debrid")
+                        goTab(Dest.Active.route)
+                    },
+                    onMessage = show,
+                )
+            }
+            composable(BROWSE_ROUTE) {
+                BrowseScreen(
+                    onMagnet = { magnet ->
+                        picked = magnet
+                        goTab(Dest.Add.route)
+                    },
+                    onDiscoverSite = { site ->
+                        show("Discover now reads ${site.substringAfter("://")}")
+                        nav.popBackStack(Dest.Discover.route, inclusive = false)
+                    },
+                )
             }
             composable(Dest.Library.route) { LibraryScreen(onMessage = show) }
             composable(Dest.Active.route) { ActiveScreen() }

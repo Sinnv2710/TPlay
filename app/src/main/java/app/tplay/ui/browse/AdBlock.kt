@@ -38,7 +38,7 @@ const val AD_HIDE_JS = """
 """
 
 /** Last two labels of a host (good enough to tell "cdn.site.com" from "ads.other.com"). */
-fun siteOf(host: String): String = host.lowercase().trimEnd('.').split('.').takeLast(2).joinToString(".")
+fun registrableSite(host: String): String = host.lowercase().trimEnd('.').split('.').takeLast(2).joinToString(".")
 
 /** Third-party hosts whose images/styles are fine (posters). Everything else third-party may not run code or frames. */
 private val THIRD_PARTY_OK = setOf("tmdb.org")
@@ -50,6 +50,8 @@ private val THIRD_PARTY_OK = setOf("tmdb.org")
 fun blockRequest(host: String?, pageHost: String?, isMainFrame: Boolean, accept: String?): Boolean {
     if (host == null || isMainFrame) return false
     if (isAdHost(host, pageHost)) return true
-    if (pageHost == null || siteOf(host) == siteOf(pageHost) || siteOf(host) in THIRD_PARTY_OK) return false
+    if (pageHost == null) return false
+    val site = registrableSite(host)
+    if (site == registrableSite(pageHost) || site in THIRD_PARTY_OK) return false
     return accept?.contains("image/", ignoreCase = true) != true || accept.contains("text/html", ignoreCase = true)
 }

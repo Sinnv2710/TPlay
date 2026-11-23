@@ -44,6 +44,8 @@ class SettingsViewModel @Inject constructor(
     val wifiOnly = share(false, settings.wifiOnly())
     val player = share("vlc", settings.preferredPlayer())
     val startPage = share("", settings.browseStartPage())
+    val discoverSite = share("", settings.discoverSite())
+    val showAdult = share(false, settings.showAdult())
     val usedBytes = share(0L, library.titles().map { list -> list.filter { !it.filesDeleted }.sumOf { it.sizeBytes } })
     val services: StateFlow<List<ServiceRow>> = share(
         KNOWN_SERVICES,
@@ -82,6 +84,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setStartPage(value: String) {
         viewModelScope.launch { settings.setBrowseStartPage(value) }
+    }
+
+    fun setShowAdult(value: Boolean) {
+        viewModelScope.launch { settings.setShowAdult(value) }
     }
 
     fun setPlayer(value: String) {

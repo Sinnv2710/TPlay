@@ -35,10 +35,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.hilt.navigation.compose.hiltViewModel
+import kotlinx.coroutines.launch
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltViewModel()) {
+fun BrowseScreen(
+    onMagnet: (String) -> Unit,
+    onDiscoverSite: (String) -> Unit,
+    viewModel: BrowseViewModel = hiltViewModel(),
+) {
+    val scope = androidx.compose.runtime.rememberCoroutineScope()
     var progress by remember { mutableFloatStateOf(0f) }
     var canGoBack by remember { mutableStateOf(false) }
     var host by remember { mutableStateOf("") }
@@ -68,6 +74,9 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                 Icon(Icons.Filled.Refresh, contentDescription = "Reload")
             }
             Text(host, modifier = Modifier.weight(1f).padding(start = 8.dp), maxLines = 1)
+            androidx.compose.material3.TextButton(onClick = {
+                scope.launch { viewModel.useForDiscover(web?.url)?.let(onDiscoverSite) }
+            }) { Text("Use in Discover") }
         }
         if (progress in 0.01f..0.99f) {
             LinearProgressIndicator({ progress }, Modifier.fillMaxWidth())
