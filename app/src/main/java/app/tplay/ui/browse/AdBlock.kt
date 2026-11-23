@@ -11,7 +11,9 @@ private val AD_DOMAINS = setOf(
     "mgid.com", "taboola.com", "outbrain.com", "revcontent.com", "criteo.com", "pubmatic.com",
     "rubiconproject.com", "openx.net", "casalemedia.com", "amazon-adsystem.com", "adskeeper.com",
     "bidvertiser.com", "yllix.com", "a-ads.com", "coinzillatag.com", "ad-maven.com", "admaven.com",
-    "popunderjs.com", "tsyndicate.com", "dolohen.com", "acscdn.com", "cdn4ads.com", "ero-advertising.com",
+    "histats.com", "dtscout.com", "dtscdn.com", "show-creative1.com", "cloudpiko.com", "mrktmtrcs.net",
+    "onaudience.com", "newshinyd.com", "ozlinedsp.com", "tagivi.com", "popunderjs.com", "tsyndicate.com",
+    "dolohen.com", "acscdn.com", "cdn4ads.com", "ero-advertising.com",
 )
 
 /** True when [host] is, or is a subdomain of, a known ad domain. Never blocks the page's own host. */
@@ -34,3 +36,20 @@ const val AD_HIDE_JS = """
   (document.head || document.documentElement).appendChild(s);
 })();
 """
+
+/** Last two labels of a host (good enough to tell "cdn.site.com" from "ads.other.com"). */
+fun siteOf(host: String): String = host.lowercase().trimEnd('.').split('.').takeLast(2).joinToString(".")
+
+/** Third-party hosts whose images/styles are fine (posters). Everything else third-party may not run code or frames. */
+private val THIRD_PARTY_OK = setOf("tmdb.org")
+
+/**
+ * Strict rule: a page may load images from other sites, but not scripts, frames or data. Ad networks rotate
+ * through hijacked domains, so a domain list alone always lags behind; this catches the new ones too.
+ */
+fun blockRequest(host: String?, pageHost: String?, isMainFrame: Boolean, accept: String?): Boolean {
+    if (host == null || isMainFrame) return false
+    if (isAdHost(host, pageHost)) return true
+    if (pageHost == null || siteOf(host) == siteOf(pageHost) || siteOf(host) in THIRD_PARTY_OK) return false
+    return accept?.contains("image/", ignoreCase = true) != true || accept.contains("text/html", ignoreCase = true)
+}

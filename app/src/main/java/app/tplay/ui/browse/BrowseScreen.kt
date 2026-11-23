@@ -86,6 +86,8 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                     settings.javaScriptCanOpenWindowsAutomatically = false
                     addJavascriptInterface(MagnetBridge(onMagnet), JS_BRIDGE_NAME)
                     webViewClient = object : WebViewClient() {
+                        @Volatile private var currentHost: String? = null
+
                         override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
                             val url = request.url.toString()
                             Log.d("TPlayBrowse", "navigate scheme=${request.url.scheme} gesture=${request.hasGesture()}")
@@ -100,13 +102,18 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                             view: WebView,
                             request: WebResourceRequest,
                         ): android.webkit.WebResourceResponse? {
-                            val pageHost = runCatching { java.net.URI(view.url.orEmpty()).host }.getOrNull()
-                            if (!isAdHost(request.url.host, pageHost)) return null
+                            val pageHost = currentHost
+                            val accept = request.requestHeaders["Accept"]
+                            if (!blockRequest(request.url.host, pageHost, request.isForMainFrame, accept)) {
+                                return null
+                            }
+                            if (app.tplay.BuildConfig.DEBUG) Log.d("TPlayBrowse", "blocked ${request.url.host}")
                             return android.webkit.WebResourceResponse("text/plain", "utf-8", null)
                         }
 
                         override fun onPageStarted(view: WebView, url: String, favicon: Bitmap?) {
                             host = runCatching { java.net.URI(url).host }.getOrNull().orEmpty()
+                            currentHost = host.ifEmpty { null }
                             view.evaluateJavascript(MAGNET_HOOK_JS + AD_HIDE_JS, null)
                         }
 
