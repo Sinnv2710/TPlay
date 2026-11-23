@@ -14,7 +14,10 @@ import org.junit.Test
 
 class DiscoverModelTest {
     private fun card(title: String, year: Int?, genres: String = "Drama") =
-        MovieCard(title, year, genres, null, "7.0", listOf("1080p"), "https://x.test/movies/a")
+        MovieCard(
+            title = title, year = year, genres = genres, posterUrl = null, rating = "7.0",
+            qualities = listOf("1080p"), pageUrl = "https://x.test/movies/a",
+        )
 
     @Test fun libraryTagMatchesNameAndYearIgnoringCase() {
         val keys = setOf(libraryKey("Sintel", 2010))

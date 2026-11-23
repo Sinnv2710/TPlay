@@ -221,12 +221,7 @@ private fun MovieTile(card: MovieCard, inLibrary: Boolean, onClick: () -> Unit) 
                 .clip(RoundedCornerShape(10.dp))
                 .background(MaterialTheme.colorScheme.surfaceVariant),
         ) {
-            AsyncImage(
-                model = card.posterUrl,
-                contentDescription = card.title,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier.fillMaxSize(),
-            )
+            Poster(card, Modifier.fillMaxSize())
             Row(
                 Modifier.align(Alignment.BottomStart).padding(6.dp),
                 horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -293,12 +288,7 @@ private fun DetailSheet(
     ModalBottomSheet(onDismissRequest = onClose) {
         Column(Modifier.padding(horizontal = 16.dp).padding(bottom = 24.dp).verticalScroll(rememberScrollState())) {
             Row(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                AsyncImage(
-                    model = card.posterUrl,
-                    contentDescription = card.title,
-                    contentScale = ContentScale.Crop,
-                    modifier = Modifier.width(96.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)),
-                )
+                Poster(card, Modifier.width(96.dp).aspectRatio(2f / 3f).clip(RoundedCornerShape(10.dp)))
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(card.title, style = MaterialTheme.typography.titleMedium)
                     Text(
@@ -371,6 +361,29 @@ private fun ReleaseList(ready: ReleasesState.Ready, onStream: (Release) -> Unit,
                 onCopy()
             }) { Text("Copy") }
             Button(onClick = { onStream(release) }) { Text("Stream") }
+        }
+    }
+}
+
+/** Poster image. If the first address fails, the site's backup address is tried; if both fail, the first letter shows. */
+@Composable
+private fun Poster(card: MovieCard, modifier: Modifier) {
+    var useFallback by remember(card.pageUrl) { mutableStateOf(false) }
+    var failed by remember(card.pageUrl) { mutableStateOf(false) }
+    val url = if (useFallback) card.fallbackPosterUrl else card.posterUrl
+    Box(modifier, contentAlignment = Alignment.Center) {
+        if (url == null || failed) {
+            Text(card.title.take(1).uppercase(), style = MaterialTheme.typography.headlineMedium)
+        } else {
+            AsyncImage(
+                model = url,
+                contentDescription = card.title,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+                onError = {
+                    if (!useFallback && card.fallbackPosterUrl != null) useFallback = true else failed = true
+                },
+            )
         }
     }
 }

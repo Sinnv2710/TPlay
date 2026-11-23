@@ -1,6 +1,7 @@
 package app.tplay
 
 import app.tplay.data.discover.DiscoverFilters
+import app.tplay.data.discover.absoluteUrl
 import app.tplay.data.discover.hasNextPage
 import app.tplay.data.discover.listUrl
 import app.tplay.data.discover.parseCards
@@ -9,6 +10,7 @@ import app.tplay.data.discover.parseSynopsis
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -36,7 +38,7 @@ class CatalogueTest {
         assertTrue(first.title.isNotBlank())
         assertNotNull(first.year)
         assertTrue(first.pageUrl.startsWith("https://"))
-        assertTrue(first.posterUrl.orEmpty().contains("tmdb.org"))
+        assertTrue(first.posterUrl.orEmpty().startsWith("http"))
         assertNotNull(first.rating)
         assertTrue(hasNextPage(page("movies.html")))
     }
@@ -65,4 +67,15 @@ class CatalogueTest {
     }
 
     private fun assertNotEquals(a: Any, b: Any) = org.junit.Assert.assertNotEquals(a, b)
+
+    @Test fun relativePosterAddressesBecomeAbsolute() {
+        assertEquals("https://x.test/img/a.jpg", absoluteUrl("https://x.test/", "/img/a.jpg"))
+        assertEquals("https://i.test/p.jpg", absoluteUrl("https://x.test", "https://i.test/p.jpg"))
+        assertNull(absoluteUrl("https://x.test", "p.jpg"))
+        val html = """<div class="card group"><a href="https://x.test/movies/a" class="block" title="A">
+            <img src="/img/gen/movie-1.jpg" data-fb="/img/gen/movie-1.jpg" alt="A"></a>
+            <h3>A</h3><p class="mt-0.5"><span>2020</span><span>Drama</span></p></div>"""
+        val card = parseCards(html, "https://x.test").single()
+        assertEquals("https://x.test/img/gen/movie-1.jpg", card.posterUrl)
+    }
 }

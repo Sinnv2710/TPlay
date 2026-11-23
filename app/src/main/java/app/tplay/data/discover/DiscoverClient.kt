@@ -35,7 +35,7 @@ class DiscoverClient @Inject constructor() {
 
     suspend fun page(site: String, filters: DiscoverFilters, page: Int): PageResult = withContext(Dispatchers.IO) {
         val html = fetch(listUrl(site, filters, page)) ?: return@withContext PageResult.Failure("Could not reach the site")
-        val cards = parseCards(html)
+        val cards = parseCards(html, site)
         when {
             cards.isNotEmpty() -> PageResult.Ok(cards, hasNextPage(html))
             page == 1 && filters == DiscoverFilters() -> PageResult.Unsupported

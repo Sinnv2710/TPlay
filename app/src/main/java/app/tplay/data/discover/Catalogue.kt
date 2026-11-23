@@ -19,6 +19,7 @@ data class MovieCard(
     val year: Int?,
     val genres: String,
     val posterUrl: String?,
+    val fallbackPosterUrl: String? = null,
     val rating: String?,
     val qualities: List<String>,
     val pageUrl: String,
@@ -48,12 +49,14 @@ private val CARD_LINK = Regex("""<a href="([^"]+)" class="block" title="""")
 private val CARD_TITLE = Regex("""<h3[^>]*>(.*?)</h3>""", RegexOption.DOT_MATCHES_ALL)
 private val CARD_META = Regex("""<p class="mt-0\.5[^>]*>(.*?)</p>""", RegexOption.DOT_MATCHES_ALL)
 private val SPAN = Regex("""<span[^>]*>(.*?)</span>""", RegexOption.DOT_MATCHES_ALL)
-private val CARD_POSTER = Regex("""<img src="(https?://[^"]+)"""")
+private val CARD_IMG = Regex("""<img\b[^>]*>""")
+private val IMG_SRC = Regex("""\ssrc="([^"]+)"""")
+private val IMG_FALLBACK = Regex("""data-fb="([^"]+)"""")
 private val CARD_RATING = Regex("""★\s*([0-9]+(?:\.[0-9]+)?)""")
 private val CARD_QUALITY = Regex("""class="pill q-[^"]*"[^>]*>([^<]+)<""")
 
 /** Reads the movie cards out of a catalogue page. Cards that cannot be read are skipped. */
-fun parseCards(html: String): List<MovieCard> =
+fun parseCards(html: String, site: String = ""): List<MovieCard> =
     html.split(CARD_SPLIT).drop(1).mapNotNull { chunk ->
         val link = CARD_LINK.find(chunk)?.groupValues?.get(1) ?: return@mapNotNull null
         val title = CARD_TITLE.find(chunk)?.groupValues?.get(1)?.let(::cleanText)?.takeIf { it.isNotEmpty() }
@@ -61,11 +64,13 @@ fun parseCards(html: String): List<MovieCard> =
         val spans = CARD_META.find(chunk)?.groupValues?.get(1)
             ?.let { meta -> SPAN.findAll(meta).map { cleanText(it.groupValues[1]) }.toList() }
             .orEmpty()
+        val img = CARD_IMG.find(chunk)?.value
         MovieCard(
             title = title,
             year = spans.firstOrNull()?.toIntOrNull(),
             genres = spans.drop(1).joinToString(", "),
-            posterUrl = CARD_POSTER.find(chunk)?.groupValues?.get(1),
+            posterUrl = img?.let { IMG_SRC.find(it)?.groupValues?.get(1) }?.let { absoluteUrl(site, it) },
+            fallbackPosterUrl = img?.let { IMG_FALLBACK.find(it)?.groupValues?.get(1) }?.let { absoluteUrl(site, it) },
             rating = CARD_RATING.find(chunk)?.groupValues?.get(1),
             qualities = CARD_QUALITY.findAll(chunk).map { it.groupValues[1].trim() }.distinct().toList(),
             pageUrl = decodeEntities(link),
@@ -128,3 +133,13 @@ private fun cleanText(raw: String): String = decodeEntities(TAGS.replace(raw, ""
 private fun decodeEntities(text: String): String = text
     .replace("&amp;", "&").replace("&quot;", "\"").replace("&#039;", "'").replace("&#39;", "'")
     .replace("&lt;", "<").replace("&gt;", ">").replace("&nbsp;", " ")
+
+/** Makes a site-relative address ("/img/a.jpg") absolute. Full addresses are kept; anything else gives null. */
+fun absoluteUrl(site: String, path: String): String? {
+    val value = decodeEntities(path).trim()
+    return when {
+        value.startsWith("https://") || value.startsWith("http://") -> value
+        value.startsWith("/") && site.isNotBlank() -> site.trimEnd('/') + value
+        else -> null
+    }
+}
