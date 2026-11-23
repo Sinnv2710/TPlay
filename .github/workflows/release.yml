@@ -31,7 +31,8 @@ jobs:
           TAG="${GITHUB_REF_NAME}"
           NAME="${TAG#v}"
           # versionCode must grow with every release: commit count is monotonic and stable
-          CODE="$(git rev-list --count HEAD)"
+          # +100 keeps it above the test builds that were installed by hand with a larger code
+          CODE="$(( $(git rev-list --count HEAD) + 100 ))"
           echo "name=$NAME" >> "$GITHUB_OUTPUT"
           echo "code=$CODE" >> "$GITHUB_OUTPUT"
 
