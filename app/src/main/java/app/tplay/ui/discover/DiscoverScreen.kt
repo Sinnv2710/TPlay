@@ -64,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tplay.data.discover.DiscoverFilters
 import app.tplay.data.discover.MovieCard
 import app.tplay.data.discover.Release
+import app.tplay.data.discover.cleanReleaseTitle
 import app.tplay.data.source.CHECK_NEEDED
 import app.tplay.data.source.SourceDef
 import app.tplay.data.source.SourceInfo
@@ -178,7 +179,8 @@ fun DiscoverScreen(
         )
     }
     if (sheet) def?.let { FilterSheet(it, filters, showAdult, viewModel) { sheet = false } }
-    selected?.let { card ->
+    selected?.let { chosen ->
+        val card = state.cards.firstOrNull { it.pageUrl == chosen.pageUrl } ?: chosen
         DetailSheet(
             card = card,
             inLibrary = card.inLibrary(keys),
@@ -261,7 +263,9 @@ private fun MovieTile(card: MovieCard, inLibrary: Boolean, onClick: () -> Unit) 
                 Box(Modifier.align(Alignment.TopEnd).padding(6.dp)) { Tag("in library", MaterialTheme.colorScheme.primary) }
             }
         }
-        Text(card.title, style = MaterialTheme.typography.bodySmall, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
+        // Sites that list raw release names (they carry a seeds line) show the movie name only.
+        val shown = if (card.info != null) cleanReleaseTitle(card.title).title else card.title
+        Text(shown, style = MaterialTheme.typography.bodySmall, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
         Text(
             listOfNotNull(card.year?.toString(), card.info).joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,

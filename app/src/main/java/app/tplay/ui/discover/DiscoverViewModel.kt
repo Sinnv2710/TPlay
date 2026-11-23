@@ -6,6 +6,7 @@ import app.tplay.data.discover.DiscoverClient
 import app.tplay.data.discover.DiscoverFilters
 import app.tplay.data.discover.MovieCard
 import app.tplay.data.discover.PageResult
+import app.tplay.data.discover.PosterLookup
 import app.tplay.data.discover.Release
 import app.tplay.data.discover.ReleasesResult
 import app.tplay.data.source.CHECK_NEEDED
@@ -53,6 +54,7 @@ class DiscoverViewModel @Inject constructor(
     private val settings: SettingsRepository,
     private val jobs: JobRepository,
     private val store: SourceStore,
+    private val posters: PosterLookup,
     library: LibraryRepository,
 ) : ViewModel() {
     val filters = MutableStateFlow(DiscoverFilters())
@@ -129,6 +131,7 @@ class DiscoverViewModel @Inject constructor(
                         val merged = (it.cards + shown).distinctBy { c -> c.pageUrl }
                         it.copy(cards = merged, loading = false, hasNext = result.hasNext, error = null)
                     }
+                    addPosters(shown.filter { it.posterUrl == null })
                 }
                 is PageResult.Challenge -> {
                     store.report(def.id, HealthLevel.WARN, CHECK_NEEDED)
@@ -141,6 +144,18 @@ class DiscoverViewModel @Inject constructor(
                 is PageResult.Failure -> {
                     store.report(def.id, HealthLevel.FAIL, result.message)
                     state.update { it.copy(loading = false, error = result.message) }
+                }
+            }
+        }
+    }
+
+    /** Cards from sites without posters get one from the movie database, filled in as each answer arrives. */
+    private fun addPosters(cards: List<MovieCard>) {
+        for (card in cards) {
+            viewModelScope.launch {
+                val url = posters.posterFor(card) ?: return@launch
+                state.update { now ->
+                    now.copy(cards = now.cards.map { if (it.pageUrl == card.pageUrl) it.copy(posterUrl = url) else it })
                 }
             }
         }

@@ -23,6 +23,11 @@ abstract class FetcherModule {
 object SourceModule {
     @Provides
     @Singleton
+    fun posters(tmdb: app.tplay.data.tmdb.TmdbClient): app.tplay.data.discover.PosterLookup =
+        app.tplay.data.discover.PosterLookup { title, year -> tmdb.lookup(title, year)?.posterUrl }
+
+    @Provides
+    @Singleton
     fun store(@ApplicationContext context: Context, fetcher: Fetcher): SourceStore =
         SourceStore(File(context.filesDir, "sources"), fetcher, builtInSources(context))
 
