@@ -92,7 +92,7 @@ class SettingsRepositoryImpl(
     }
 
     override fun browseStartPage(): Flow<String> = store.data.map { preferences ->
-        preferences[browseKey].orEmpty()
+        preferences[browseKey] ?: "https://en.yts-official.com/"
     }
 
     override suspend fun setBrowseStartPage(value: String) {
