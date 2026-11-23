@@ -11,9 +11,16 @@ object ExternalPlayer {
     private const val VLC = "org.videolan.vlc"
     private val MX = listOf("com.mxtech.videoplayer.pro", "com.mxtech.videoplayer.ad")
 
-    fun launch(context: Context, uri: Uri, positionMs: Long, title: String, subtitles: Uri? = null): Boolean {
+    fun launch(
+        context: Context,
+        uri: Uri,
+        positionMs: Long,
+        title: String,
+        preferred: String = "vlc",
+        subtitles: Uri? = null,
+    ): Boolean {
         val shared = shareable(context, uri)
-        val candidates = listOf(VLC) + MX
+        val candidates = if (preferred == "mx") MX else listOf(VLC)
         for (pkg in candidates) {
             val intent = Intent(Intent.ACTION_VIEW)
                 .setDataAndType(shared, "video/*")

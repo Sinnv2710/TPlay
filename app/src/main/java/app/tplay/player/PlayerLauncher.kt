@@ -21,7 +21,7 @@ object PlayerLauncher {
         preferred: String,
         subsDir: String? = null,
     ) {
-        if (preferred != "builtin" && ExternalPlayer.launch(context, Uri.parse(uri), positionMs, title)) return
+        if (preferred != "builtin" && ExternalPlayer.launch(context, Uri.parse(uri), positionMs, title, preferred)) return
         val intent = Intent(context, PlayerActivity::class.java)
             .putExtra(EXTRA_URI, uri)
             .putExtra(EXTRA_TITLE_ID, titleId)
