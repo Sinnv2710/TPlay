@@ -8,6 +8,7 @@ import app.tplay.data.discover.MovieCard
 import app.tplay.data.discover.PageResult
 import app.tplay.data.discover.Release
 import app.tplay.data.discover.ReleasesResult
+import app.tplay.data.source.CHECK_NEEDED
 import app.tplay.data.source.HealthLevel
 import app.tplay.data.source.SourceDef
 import app.tplay.data.source.SourceInfo
@@ -34,6 +35,8 @@ data class DiscoverState(
     val hasNext: Boolean = false,
     val error: String? = null,
     val unsupported: Boolean = false,
+    /** Page to open in the browser so the user can pass the site's human check. */
+    val challengeUrl: String? = null,
 )
 
 sealed interface ReleasesState {
@@ -41,6 +44,7 @@ sealed interface ReleasesState {
     data object Loading : ReleasesState
     data class Ready(val synopsis: String, val releases: List<Release>) : ReleasesState
     data class Failed(val message: String) : ReleasesState
+    data class Challenge(val url: String) : ReleasesState
 }
 
 @HiltViewModel
@@ -93,7 +97,9 @@ class DiscoverViewModel @Inject constructor(
     fun reload(resetFilters: Boolean = false) {
         if (resetFilters) filters.value = DiscoverFilters()
         page = 1
-        state.update { it.copy(cards = emptyList(), hasNext = false, error = null, unsupported = false) }
+        state.update {
+            it.copy(cards = emptyList(), hasNext = false, error = null, unsupported = false, challengeUrl = null)
+        }
         load()
     }
 
@@ -124,6 +130,10 @@ class DiscoverViewModel @Inject constructor(
                         it.copy(cards = merged, loading = false, hasNext = result.hasNext, error = null)
                     }
                 }
+                is PageResult.Challenge -> {
+                    store.report(def.id, HealthLevel.WARN, CHECK_NEEDED)
+                    state.update { it.copy(loading = false, challengeUrl = result.url) }
+                }
                 PageResult.Unsupported -> {
                     store.report(def.id, HealthLevel.WARN, "No movie cards found. The site may have changed.")
                     state.update { it.copy(loading = false, unsupported = true) }
@@ -147,6 +157,7 @@ class DiscoverViewModel @Inject constructor(
             releases.value = when (val result = client.releases(def, card.pageUrl)) {
                 is ReleasesResult.Ok -> ReleasesState.Ready(result.synopsis, result.releases)
                 is ReleasesResult.Failure -> ReleasesState.Failed(result.message)
+                is ReleasesResult.Challenge -> ReleasesState.Challenge(result.url)
             }
         }
     }

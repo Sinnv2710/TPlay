@@ -41,8 +41,11 @@ import app.tplay.ui.settings.SettingsScreen
 import kotlinx.coroutines.launch
 
 private const val BROWSE_ROUTE = "browse"
+private const val BROWSE_PATTERN = "browse?url={url}"
+
+private fun browseRoute(url: String?) = if (url == null) BROWSE_ROUTE else "browse?url=${android.net.Uri.encode(url)}"
 private const val SOURCES_ROUTE = "sources"
-private val OVERLAY_ROUTES = setOf(BROWSE_ROUTE, SOURCES_ROUTE)
+private val OVERLAY_ROUTES = setOf(BROWSE_PATTERN, SOURCES_ROUTE)
 
 private enum class Dest(val route: String, val label: String, val icon: ImageVector) {
     Add("add", "Add", Icons.Filled.Add),
@@ -108,7 +111,7 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
             }
             composable(Dest.Discover.route) {
                 DiscoverScreen(
-                    onOpenBrowser = { nav.navigate(BROWSE_ROUTE) { launchSingleTop = true } },
+                    onOpenBrowser = { url -> nav.navigate(browseRoute(url)) { launchSingleTop = true } },
                     onManageSources = { nav.navigate(SOURCES_ROUTE) { launchSingleTop = true } },
                     onStarted = {
                         show("Sent to Real-Debrid")
@@ -117,8 +120,18 @@ fun AppNav(incomingMagnet: String?, onIncomingUsed: () -> Unit) {
                     onMessage = show,
                 )
             }
-            composable(BROWSE_ROUTE) {
+            composable(
+                BROWSE_PATTERN,
+                arguments = listOf(
+                    androidx.navigation.navArgument("url") {
+                        type = androidx.navigation.NavType.StringType
+                        nullable = true
+                        defaultValue = null
+                    },
+                ),
+            ) { entry ->
                 BrowseScreen(
+                    startUrl = entry.arguments?.getString("url"),
                     onMagnet = { magnet ->
                         picked = magnet
                         goTab(Dest.Add.route)

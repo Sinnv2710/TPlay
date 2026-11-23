@@ -43,6 +43,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -62,6 +64,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import app.tplay.data.discover.DiscoverFilters
 import app.tplay.data.discover.MovieCard
 import app.tplay.data.discover.Release
+import app.tplay.data.source.CHECK_NEEDED
 import app.tplay.data.source.SourceDef
 import app.tplay.data.source.SourceInfo
 import androidx.compose.material.icons.filled.ArrowDropDown
@@ -73,7 +76,7 @@ import coil.compose.AsyncImage
 
 @Composable
 fun DiscoverScreen(
-    onOpenBrowser: () -> Unit,
+    onOpenBrowser: (String?) -> Unit,
     onManageSources: () -> Unit,
     onStarted: () -> Unit,
     onMessage: (String) -> Unit,
@@ -93,6 +96,7 @@ fun DiscoverScreen(
     val gridState = rememberLazyGridState()
 
     EndlessScroll(gridState, state.cards.size) { viewModel.loadMore() }
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) { if (state.challengeUrl != null) viewModel.reload() }
 
     Column(Modifier.fillMaxSize().padding(horizontal = 16.dp)) {
         Row(verticalAlignment = Alignment.CenterVertically) {
@@ -112,7 +116,7 @@ fun DiscoverScreen(
                     Icon(Icons.Filled.ArrowDropDown, contentDescription = "Choose source")
                 }
             }
-            IconButton(onClick = onOpenBrowser) {
+            IconButton(onClick = { onOpenBrowser(null) }) {
                 Icon(Icons.Filled.Language, contentDescription = "Open the browser")
             }
         }
@@ -133,6 +137,7 @@ fun DiscoverScreen(
         ActiveFilters(def, filters, onOpenSheet = { sheet = true }, viewModel = viewModel)
         Box(Modifier.fillMaxSize()) {
             when {
+                state.challengeUrl != null -> CheckPanel(state.challengeUrl.orEmpty(), onOpenBrowser, viewModel::reload)
                 state.unsupported -> EmptyState(
                     "This source stopped matching its site",
                     "The page layout probably changed. Open Manage sources to check for an update, or pick another source.",
@@ -179,6 +184,7 @@ fun DiscoverScreen(
             inLibrary = card.inLibrary(keys),
             releases = releases,
             onChoose = { viewModel.loadReleases(card) },
+            onOpenBrowser = onOpenBrowser,
             onStream = { release ->
                 viewModel.stream(release) {
                     selected = null
@@ -257,7 +263,7 @@ private fun MovieTile(card: MovieCard, inLibrary: Boolean, onClick: () -> Unit) 
         }
         Text(card.title, style = MaterialTheme.typography.bodySmall, maxLines = 1, modifier = Modifier.padding(top = 4.dp))
         Text(
-            card.year?.toString().orEmpty(),
+            listOfNotNull(card.year?.toString(), card.info).joinToString(" · "),
             style = MaterialTheme.typography.labelSmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -347,6 +353,7 @@ private fun DetailSheet(
     inLibrary: Boolean,
     releases: ReleasesState,
     onChoose: () -> Unit,
+    onOpenBrowser: (String?) -> Unit,
     onStream: (Release) -> Unit,
     onCopy: () -> Unit,
     onClose: () -> Unit,
@@ -378,6 +385,13 @@ private fun DetailSheet(
                 is ReleasesState.Failed -> Column(Modifier.padding(top = 16.dp)) {
                     Text(releases.message, color = MaterialTheme.colorScheme.error)
                     TextButton(onClick = onChoose) { Text("Try again") }
+                }
+                is ReleasesState.Challenge -> Column(Modifier.padding(top = 16.dp)) {
+                    Text(CHECK_NEEDED, color = MaterialTheme.colorScheme.error)
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onOpenBrowser(releases.url) }) { Text("Open browser") }
+                        TextButton(onClick = onChoose) { Text("Try again") }
+                    }
                 }
                 is ReleasesState.Ready -> ReleaseList(releases, onStream, onCopy)
             }
@@ -451,5 +465,25 @@ private fun Poster(card: MovieCard, modifier: Modifier) {
                 },
             )
         }
+    }
+}
+
+/** Shown when the site wants a human check: the user passes it in the in-app browser, then the list loads. */
+@Composable
+private fun CheckPanel(url: String, onOpenBrowser: (String?) -> Unit, onTryAgain: () -> Unit) {
+    Column(
+        Modifier.fillMaxSize().padding(24.dp),
+        verticalArrangement = Arrangement.Center,
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Text("This site wants a quick check", style = MaterialTheme.typography.titleMedium)
+        Text(
+            "Open the browser, pass the check, then come back. The list loads on its own.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(vertical = 8.dp),
+        )
+        Button(onClick = { onOpenBrowser(url) }) { Text("Open browser") }
+        TextButton(onClick = onTryAgain) { Text("Try again") }
     }
 }

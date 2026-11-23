@@ -26,8 +26,9 @@ object SourceEngine {
     /** Address of one list page. Query pairs whose value is blank are dropped; page 1 omits `page` in the query. */
     fun listUrl(def: SourceDef, filters: DiscoverFilters, page: Int): String {
         val values = filters.values + ("keyword" to filters.keyword.trim())
-        val path = def.list.path.substringBefore('?')
-        val query = def.list.path.substringAfter('?', "")
+        val template = if (filters.keyword.isBlank() && def.list.emptyPath != null) def.list.emptyPath else def.list.path
+        val path = template.substringBefore('?')
+        val query = template.substringAfter('?', "")
         val builtPath = fill(path, values, page, forPath = true)
         val pairs = query.split('&').filter { it.isNotBlank() }.mapNotNull { pair ->
             val key = pair.substringBefore('=')
@@ -59,6 +60,7 @@ object SourceEngine {
                 rating = pick(card, fields["rating"])?.let { NUMBER.find(it)?.value },
                 qualities = pickAll(card, fields["quality"]).distinct(),
                 pageUrl = link,
+                info = pick(card, fields["info"])?.let { text -> def.list.infoLabel?.let { "$text $it" } ?: text },
             )
         }
         val next = def.list.next?.let { doc.selectFirst(it) != null } ?: false
@@ -133,6 +135,7 @@ object SourceEngine {
         val host = runCatching { URI(def.site) }.getOrNull()
         if (host?.scheme != "https" || host.host.isNullOrBlank()) return "The site must be an https address"
         if (!def.list.path.startsWith("/")) return "The list path must start with /"
+        if (def.list.emptyPath?.startsWith("/") == false) return "The browse path must start with /"
         if ("title" !in def.list.fields || "link" !in def.list.fields) return "The list needs title and link fields"
         if ("magnet" !in def.detail.fields) return "The detail needs a magnet field"
         val fieldSelectors = (def.list.fields.values + def.detail.fields.values + listOfNotNull(def.detail.synopsis))

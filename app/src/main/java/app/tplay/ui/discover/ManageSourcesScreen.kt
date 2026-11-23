@@ -53,6 +53,17 @@ fun ManageSourcesScreen(
     val testing by viewModel.testing.collectAsStateWithLifecycle()
     var address by remember { mutableStateOf("") }
     var importing by remember { mutableStateOf(false) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val picker = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri ->
+        if (uri != null) {
+            val text = runCatching {
+                context.contentResolver.openInputStream(uri)?.use { it.readNBytes(MAX_FILE).toString(Charsets.UTF_8) }
+            }.getOrNull()
+            if (text == null) onMessage("Could not read that file") else viewModel.importJson(text)
+        }
+    }
     var open by remember { mutableStateOf<String?>(null) }
 
     LaunchedEffect(message) {
@@ -110,7 +121,10 @@ fun ManageSourcesScreen(
             )
             Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Button(onClick = { viewModel.check(address) }, enabled = address.isNotBlank() && !busy) { Text("Check") }
-                OutlinedButton(onClick = { importing = true }) { Text("Paste a source file") }
+                OutlinedButton(onClick = { picker.launch(arrayOf("application/json", "text/*", "*/*")) }) {
+                    Text("Choose a file")
+                }
+                OutlinedButton(onClick = { importing = true }) { Text("Paste") }
             }
         }
         found?.let { repo -> item { FoundRepo(repo, sources, viewModel) } }
@@ -236,3 +250,5 @@ private fun ImportDialog(onClose: () -> Unit, onImport: (String) -> Unit) {
         dismissButton = { TextButton(onClick = onClose) { Text("Cancel") } },
     )
 }
+
+private const val MAX_FILE = 70_000

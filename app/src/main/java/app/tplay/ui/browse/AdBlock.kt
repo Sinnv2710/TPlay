@@ -41,7 +41,7 @@ const val AD_HIDE_JS = """
 fun registrableSite(host: String): String = host.lowercase().trimEnd('.').split('.').takeLast(2).joinToString(".")
 
 /** Third-party hosts whose images/styles are fine (posters). Everything else third-party may not run code or frames. */
-private val THIRD_PARTY_OK = setOf("tmdb.org")
+private val THIRD_PARTY_OK = setOf("tmdb.org", "cloudflare.com", "cloudflare.net")
 
 /**
  * Strict rule: a page may load images from other sites, but not scripts, frames or data. Ad networks rotate

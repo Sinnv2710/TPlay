@@ -27,6 +27,10 @@ data class ListDef(
     val card: String,
     val fields: Map<String, String>,
     val next: String? = null,
+    /** Used instead of [path] when there is no search word (a "browse" page). Same placeholders. */
+    val emptyPath: String? = null,
+    /** Word shown after the "info" field on a card, for example "seeds". */
+    val infoLabel: String? = null,
 )
 
 @Serializable

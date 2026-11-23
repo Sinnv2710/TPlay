@@ -11,6 +11,7 @@ data class SelfTestResult(val level: HealthLevel, val message: String)
 suspend fun selfTest(client: DiscoverClient, def: SourceDef): SelfTestResult {
     val cards = when (val page = client.page(def, DiscoverFilters(), 1)) {
         is PageResult.Failure -> return SelfTestResult(HealthLevel.FAIL, page.message)
+        is PageResult.Challenge -> return SelfTestResult(HealthLevel.WARN, CHECK_NEEDED)
         PageResult.Unsupported -> return SelfTestResult(HealthLevel.WARN, "No movie cards found. The site may have changed.")
         is PageResult.Ok -> page.cards
     }
@@ -19,6 +20,9 @@ suspend fun selfTest(client: DiscoverClient, def: SourceDef): SelfTestResult {
     val head = "${cards.size} cards read, $posters with a poster"
     return when (val detail = client.releases(def, cards.first().pageUrl)) {
         is ReleasesResult.Failure -> SelfTestResult(HealthLevel.WARN, "$head, but the first movie gave no magnet links")
+        is ReleasesResult.Challenge -> SelfTestResult(HealthLevel.WARN, CHECK_NEEDED)
         is ReleasesResult.Ok -> SelfTestResult(HealthLevel.OK, "$head, first movie has ${detail.releases.size} magnet links")
     }
 }
+
+const val CHECK_NEEDED = "The site wants a quick check. Open the browser, pass it, then try again."

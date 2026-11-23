@@ -1,7 +1,11 @@
 package app.tplay
 
 import app.tplay.data.discover.DiscoverFilters
+import app.tplay.data.source.DetailDef
+import app.tplay.data.source.ListDef
 import app.tplay.data.source.SourceDef
+import app.tplay.data.source.isChallenge
+import app.tplay.ui.browse.blockRequest
 import app.tplay.data.source.SourceEngine
 import java.io.File
 import kotlinx.serialization.json.Json
@@ -99,5 +103,81 @@ class SourceEngineTest {
         assertNotNull(SourceEngine.validate(def.copy(list = def.list.copy(card = "div[[["))))
         assertNotNull(SourceEngine.validate(def.copy(list = def.list.copy(fields = mapOf("title" to "h3")))))
         assertNotNull(SourceEngine.validate(def.copy(detail = def.detail.copy(fields = emptyMap()))))
+    }
+
+    // A torrent-table site: no posters, no filters, a browse page for an empty search, magnet on the detail page.
+    private val tableDef = SourceDef(
+        id = "table-site", name = "Table site", site = "https://t.test",
+        list = ListDef(
+            path = "/search/{keyword}/{page}/",
+            emptyPath = "/browse/{page}/",
+            card = "table.list tr:has(td.name)",
+            next = "div.pager a:contains(>>)",
+            infoLabel = "seeds",
+            fields = mapOf(
+                "title" to "td.name a[href^=/t/]", "year" to "td.name a[href^=/t/]",
+                "link" to "td.name a[href^=/t/]@href", "info" to "td.seeds",
+            ),
+        ),
+        detail = DetailDef(
+            release = "body",
+            fields = mapOf(
+                "name" to "h1", "size" to "li:has(strong:containsOwn(Size)) span",
+                "seeds" to "span.seeds", "magnet" to "a[href^=magnet:]@href",
+            ),
+        ),
+    )
+
+    @Test fun browsePathIsUsedWhenThereIsNoSearchWord() {
+        assertEquals("https://t.test/browse/1/", SourceEngine.listUrl(tableDef, DiscoverFilters(), 1))
+        assertEquals("https://t.test/browse/3/", SourceEngine.listUrl(tableDef, DiscoverFilters(), 3))
+        val searched = SourceEngine.listUrl(tableDef, DiscoverFilters("blue sky"), 2)
+        assertEquals("https://t.test/search/blue%20sky/2/", searched)
+        assertNull(SourceEngine.validate(tableDef))
+        val badBrowse = tableDef.copy(list = tableDef.list.copy(emptyPath = "browse"))
+        assertNotNull(SourceEngine.validate(badBrowse))
+    }
+
+    @Test fun readsATorrentTableWithoutPosters() {
+        val html = """<table class="list"><thead><tr><th>name</th></tr></thead><tbody>
+            <tr><td class="name"><a href="/x/1" class="icon"></a>
+            <a href="/t/7/Big-Movie-2019-1080p/">Big Movie 2019 1080p</a></td>
+            <td class="seeds">42</td></tr>
+            <tr><td class="name"><a href="/t/8/Old/">Old Film</a></td><td class="seeds">3</td></tr></tbody></table>
+            <div class="pager"><a href="/browse/2/">&gt;&gt;</a></div>"""
+        val page = SourceEngine.parseList(tableDef, html, "https://t.test/browse/1/")
+        assertEquals(2, page.cards.size)
+        val first = page.cards.first()
+        assertEquals("Big Movie 2019 1080p", first.title)
+        assertEquals(2019, first.year)
+        assertEquals("42 seeds", first.info)
+        assertEquals("https://t.test/t/7/Big-Movie-2019-1080p/", first.pageUrl)
+        assertNull(first.posterUrl)
+        assertTrue(page.hasNext)
+    }
+
+    @Test fun readsASingleReleaseFromADetailPage() {
+        val html = """<html><body><h1> Big Movie 2019 1080p </h1><ul>
+            <li><strong>Total Size</strong> <span>4.8 GB</span></li>
+            <li><strong>Seeders</strong> <span class="seeds">42</span></li></ul>
+            <a href="magnet:?xt=urn:btih:ABC123&amp;dn=Big+Movie">Magnet</a></body></html>"""
+        val release = SourceEngine.parseDetail(tableDef, html, "https://t.test/t/7/").releases.single()
+        assertEquals("Big Movie 2019 1080p", release.name)
+        assertEquals("1080p", release.quality)
+        assertEquals(42, release.seeds)
+        assertTrue(release.magnet.startsWith("magnet:?xt=urn:btih:ABC123"))
+    }
+
+    @Test fun recognisesAHumanCheckWall() {
+        assertTrue(isChallenge(403, null, "<title>Just a moment...</title>"))
+        assertTrue(isChallenge(200, "challenge", ""))
+        assertTrue(isChallenge(503, null, "<div id=\"cf-chl-widget\"></div>"))
+        assertFalse(isChallenge(403, null, "Forbidden"))
+        assertFalse(isChallenge(200, null, "<html>Just a moment</html>"))
+    }
+
+    @Test fun adBlockerLetsTheCloudflareCheckRun() {
+        assertFalse(blockRequest("challenges.cloudflare.com", "1337x.to", false, "*/*"))
+        assertTrue(blockRequest("ads.unknown-ads.xyz", "1337x.to", false, "*/*"))
     }
 }

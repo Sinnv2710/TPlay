@@ -38,7 +38,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 
 @SuppressLint("SetJavaScriptEnabled")
 @Composable
-fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltViewModel()) {
+fun BrowseScreen(
+    onMagnet: (String) -> Unit,
+    startUrl: String? = null,
+    viewModel: BrowseViewModel = hiltViewModel(),
+) {
     var progress by remember { mutableFloatStateOf(0f) }
     var canGoBack by remember { mutableStateOf(false) }
     var host by remember { mutableStateOf("") }
@@ -118,6 +122,7 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                         }
 
                         override fun onPageFinished(view: WebView, url: String) {
+                            android.webkit.CookieManager.getInstance().flush()
                             view.evaluateJavascript(MAGNET_HOOK_JS + AD_HIDE_JS, null)
                         }
 
@@ -152,7 +157,7 @@ fun BrowseScreen(onMagnet: (String) -> Unit, viewModel: BrowseViewModel = hiltVi
                             return true
                         }
                     }
-                    loadUrl(viewModel.lastUrl)
+                    loadUrl(startUrl?.takeIf { isWebUrl(it) } ?: viewModel.lastUrl)
                     web = this
                 }
             },

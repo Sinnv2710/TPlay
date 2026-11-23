@@ -22,6 +22,8 @@ data class MovieCard(
     val rating: String?,
     val qualities: List<String>,
     val pageUrl: String,
+    /** Short extra line for sites without posters or years, for example "12 seeds". */
+    val info: String? = null,
 )
 
 /** One downloadable release on a movie page. [magnet] is the full magnet link. */
