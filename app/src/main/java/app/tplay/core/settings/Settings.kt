@@ -107,7 +107,7 @@ class SettingsRepositoryImpl(
     }
 
     override fun preferredPlayer(): Flow<String> = store.data.map { preferences ->
-        preferences[playerKey] ?: "vlc"
+        preferences[playerKey] ?: "builtin"
     }
 
     override suspend fun setPreferredPlayer(value: String) {

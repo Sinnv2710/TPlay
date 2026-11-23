@@ -42,7 +42,7 @@ class SettingsViewModel @Inject constructor(
     val policy = share(CleanupPolicy(CleanupPreset.NEVER, 7, false, true), settings.cleanupPolicy())
     val folder = share("", settings.parentFolder())
     val wifiOnly = share(false, settings.wifiOnly())
-    val player = share("vlc", settings.preferredPlayer())
+    val player = share("builtin", settings.preferredPlayer())
     val startPage = share("", settings.browseStartPage())
     val showAdult = share(false, settings.showAdult())
     val usedBytes = share(0L, library.titles().map { list -> list.filter { !it.filesDeleted }.sumOf { it.sizeBytes } })
