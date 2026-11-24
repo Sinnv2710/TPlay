@@ -24,8 +24,11 @@ class TmdbClient(
 
     @Serializable private data class Results(val results: List<Hit> = emptyList())
 
+    @Serializable private data class External(val imdb_id: String? = null)
+
     @Serializable
     private data class Hit(
+        val id: Long = 0,
         val poster_path: String? = null,
         val overview: String? = null,
         val release_date: String? = null,
@@ -48,6 +51,21 @@ class TmdbClient(
             )
         }
         null
+    }
+
+    /** IMDb id (tt1234567) of the movie, or null without a key or match. */
+    suspend fun imdbId(title: String, year: Int?): String? = withContext(Dispatchers.IO) {
+        val key = vault.get(ServiceIds.TMDB) ?: return@withContext null
+        val hit = search(key, "movie", title, year) ?: return@withContext null
+        try {
+            val url = "$baseUrl/movie/${hit.id}/external_ids?api_key=$key"
+            http.newCall(Request.Builder().url(url).build()).execute().use { r ->
+                if (!r.isSuccessful) return@withContext null
+                json.decodeFromString<External>(r.body?.string().orEmpty()).imdb_id?.takeIf { it.startsWith("tt") }
+            }
+        } catch (e: IOException) {
+            null
+        }
     }
 
     private fun search(key: String, kind: String, title: String, year: Int?): Hit? {

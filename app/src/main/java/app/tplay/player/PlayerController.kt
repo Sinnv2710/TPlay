@@ -34,9 +34,15 @@ class PlayerController(
         selectTrack(C.TRACK_TYPE_TEXT, trackGroupIndex, trackIndex)
     }
 
-    fun sideloadSubtitle(uri: Uri, language: String = "und") {
+    fun sideloadSubtitle(
+        uri: Uri,
+        language: String = "und",
+        mime: String = MimeTypes.APPLICATION_SUBRIP,
+        label: String? = null,
+    ) {
         val subtitle = MediaItem.SubtitleConfiguration.Builder(uri)
-            .setMimeType(MimeTypes.APPLICATION_SUBRIP)
+            .setMimeType(mime)
+            .setLabel(label)
             .setLanguage(language)
             .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
             .build()

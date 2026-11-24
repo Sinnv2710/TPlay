@@ -27,7 +27,9 @@ import dagger.hilt.android.AndroidEntryPoint
 import java.io.File
 import javax.inject.Inject
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Built-in player host. Declared configChanges keep ExoPlayer alive across fold, unfold and rotation. */
 @UnstableApi
@@ -36,6 +38,10 @@ class PlayerActivity : ComponentActivity() {
     @Inject lateinit var progress: ProgressRepository
 
     private var player: ExoPlayer? = null
+    private var subsFolder: File? = null
+    private val pickSubtitle = registerForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.OpenDocument(),
+    ) { uri -> if (uri != null) addPickedSubtitle(uri) }
     private var titleId = 0L
     private val inPip = mutableStateOf(false)
     private val tabletop = mutableStateOf(false)
@@ -52,6 +58,7 @@ class PlayerActivity : ComponentActivity() {
         titleId = intent.getLongExtra(PlayerLauncher.EXTRA_TITLE_ID, 0L)
         val title = intent.getStringExtra(PlayerLauncher.EXTRA_TITLE).orEmpty()
         val start = intent.getLongExtra(PlayerLauncher.EXTRA_POSITION, 0L)
+        subsFolder = intent.getStringExtra(PlayerLauncher.EXTRA_SUBS_DIR)?.let(::File)
         val sources: androidx.media3.datasource.DataSource.Factory =
             if (Uri.parse(uri).scheme == "file") {
                 androidx.media3.datasource.DataSource.Factory { GrowingFileDataSource() }
@@ -87,8 +94,41 @@ class PlayerActivity : ComponentActivity() {
                     tabletop = tabletop.value,
                     onBack = { finish() },
                     onPip = { enterPip() },
+                    onPickSubtitle = { pickSubtitle.launch(arrayOf("*/*")) },
                 )
             }
+        }
+    }
+
+    /** Copies a subtitle file the user picked next to the movie (so it comes back next time) and shows it now. */
+    private fun addPickedSubtitle(uri: Uri) {
+        val exo = player ?: return
+        val name = contentResolver.query(uri, arrayOf(android.provider.OpenableColumns.DISPLAY_NAME), null, null, null)
+            ?.use { if (it.moveToFirst()) it.getString(0) else null }.orEmpty()
+        val ext = name.substringAfterLast('.', "srt").lowercase()
+        val mime = SUBTITLE_MIME[ext]
+        val folder = subsFolder
+        if (mime == null || folder == null) {
+            android.widget.Toast.makeText(this, "Pick an .srt, .vtt or .ass file", android.widget.Toast.LENGTH_LONG).show()
+            return
+        }
+        lifecycleScope.launch {
+            val saved = withContext(Dispatchers.IO) {
+                runCatching {
+                    folder.mkdirs()
+                    File(folder, "subtitle.picked.$ext").also { target ->
+                        contentResolver.openInputStream(uri)!!.use { input ->
+                            target.outputStream().use { input.copyTo(it) }
+                        }
+                    }
+                }.getOrNull()
+            }
+            if (saved == null) {
+                android.widget.Toast.makeText(this@PlayerActivity, "Could not read that file", android.widget.Toast.LENGTH_LONG).show()
+                return@launch
+            }
+            val label = name.ifBlank { saved.name }
+            PlayerController(exo).sideloadSubtitle(Uri.fromFile(saved), "und", mime, label)
         }
     }
 
@@ -99,7 +139,13 @@ class PlayerActivity : ComponentActivity() {
         if (folder != null) {
             val subtitles = folder.listFiles().orEmpty()
                 .filter { it.extension.lowercase() in SUBTITLE_MIME }
-                .sortedBy { if (file != null && it.nameWithoutExtension == file.nameWithoutExtension) 0 else 1 }
+                .sortedBy {
+                    when {
+                        it.name.startsWith("subtitle.picked") -> -1
+                        file != null && it.nameWithoutExtension == file.nameWithoutExtension -> 0
+                        else -> 1
+                    }
+                }
                 .mapIndexed { index, sub ->
                     MediaItem.SubtitleConfiguration.Builder(Uri.fromFile(sub))
                         .setMimeType(SUBTITLE_MIME.getValue(sub.extension.lowercase()))

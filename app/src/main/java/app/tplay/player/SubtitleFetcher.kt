@@ -17,7 +17,8 @@ class SubtitleFetcher(private val subtitles: SubtitleRepository, private val fil
     suspend fun ensure(title: Title, language: String): File {
         val folder = title.folderPath?.let(::File)?.takeIf { it.isDirectory } ?: File(filesDir, "subs/${title.id}")
         withContext(Dispatchers.IO) { folder.mkdirs() }
-        val have = folder.listFiles().orEmpty().any { it.name.contains(".$language.") }
+        val have = folder.listFiles().orEmpty()
+            .any { it.name.contains(".$language.") || it.name.startsWith("subtitle.picked") }
         if (have) return folder
         withTimeoutOrNull(TIMEOUT_MS) {
             for (lang in listOf(language, "en").distinct()) {

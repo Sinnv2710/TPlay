@@ -3,6 +3,7 @@ package app.tplay.data.subs
 import app.tplay.domain.ServiceIds
 import app.tplay.domain.SubtitleHit
 import app.tplay.domain.SubtitleRepository
+import app.tplay.domain.matches
 import app.tplay.domain.VaultRepository
 import java.io.File
 import java.io.IOException
@@ -28,6 +29,7 @@ class SubtitleRepositoryImpl(
     private val http: OkHttpClient = OkHttpClient(),
     private val baseUrl: String = "https://api.opensubtitles.com/api/v1",
     private val org: OrgSubtitleSource = OrgSubtitleSource(http),
+    private val yify: YifySubtitleSource? = null,
 ) : SubtitleRepository {
     private val json = Json { ignoreUnknownKeys = true }
 
@@ -66,8 +68,11 @@ class SubtitleRepositoryImpl(
         fileHash: String?,
     ): List<SubtitleHit> {
         val primary = searchCom(title, year, language, fileHash)
-        if (primary.isNotEmpty()) return primary
-        return withContext(Dispatchers.IO) { org.search(title, year, language, fileHash) }
+        // The exact-by-IMDb source goes before the fuzzy one, which can return other films.
+        val exact = if (fileHash == null) yify?.search(title, year, language).orEmpty() else emptyList()
+        val found = primary + exact
+        if (found.any { it.matches(title, year) }) return found
+        return found + withContext(Dispatchers.IO) { org.search(title, year, language, fileHash) }
     }
 
     private suspend fun searchCom(title: String, year: Int?, language: String, fileHash: String?): List<SubtitleHit> {
@@ -106,6 +111,9 @@ class SubtitleRepositoryImpl(
     }
 
     override suspend fun download(hit: SubtitleHit, intoFolder: String): String {
+        if (hit.source == YifySubtitleSource.SOURCE && yify != null) {
+            return withContext(Dispatchers.IO) { yify.download(hit, intoFolder) }
+        }
         if (hit.source == "OpenSubtitles.org") {
             return withContext(Dispatchers.IO) { org.download(hit, intoFolder) }
         }

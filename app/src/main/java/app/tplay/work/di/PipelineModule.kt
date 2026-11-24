@@ -28,7 +28,8 @@ object PipelineModule {
 
     @Provides
     @Singleton
-    fun subtitles(vault: VaultRepository): SubtitleRepository = SubtitleRepositoryImpl(vault)
+    fun subtitles(vault: VaultRepository, tmdb: TmdbClient): SubtitleRepository =
+        SubtitleRepositoryImpl(vault, yify = app.tplay.data.subs.YifySubtitleSource(imdbId = tmdb::imdbId))
 
     @Provides
     @Singleton

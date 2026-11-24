@@ -70,6 +70,7 @@ fun PlayerScreen(
     tabletop: Boolean,
     onBack: () -> Unit,
     onPip: () -> Unit,
+    onPickSubtitle: () -> Unit = {},
 ) {
     var position by remember { mutableLongStateOf(0L) }
     var duration by remember { mutableLongStateOf(0L) }
@@ -124,6 +125,7 @@ fun PlayerScreen(
             onFill = { fill = !fill; touch() },
             onBack = onBack,
             onPip = onPip,
+            onPickSubtitle = onPickSubtitle,
             onPlayPause = {
                 if (player.isPlaying) player.pause() else player.play()
                 touch()
@@ -201,6 +203,7 @@ private fun Controls(
     onFill: () -> Unit,
     onBack: () -> Unit,
     onPip: () -> Unit,
+    onPickSubtitle: () -> Unit,
     onPlayPause: () -> Unit,
     onSeekStart: () -> Unit,
     onSeek: (Long) -> Unit,
@@ -259,7 +262,9 @@ private fun Controls(
                 Box(Modifier.weight(1f))
                 SpeedMenu(controller, player)
                 TrackMenu(Icons.Filled.Audiotrack, "Audio", C.TRACK_TYPE_AUDIO, tracks, controller, onInteract)
-                TrackMenu(Icons.Filled.Subtitles, "Subtitles", C.TRACK_TYPE_TEXT, tracks, controller, onInteract)
+                TrackMenu(
+                    Icons.Filled.Subtitles, "Subtitles", C.TRACK_TYPE_TEXT, tracks, controller, onInteract, onPickSubtitle,
+                )
             }
         }
     }
@@ -293,6 +298,7 @@ private fun TrackMenu(
     tracks: Tracks,
     controller: PlayerController,
     onInteract: () -> Unit,
+    onAdd: (() -> Unit)? = null,
 ) {
     var open by remember { mutableStateOf(false) }
     val groups = tracks.groups.filter { it.type == type }
@@ -303,6 +309,9 @@ private fun TrackMenu(
         DropdownMenu(open, onDismissRequest = { open = false }) {
             if (groups.isEmpty()) {
                 DropdownMenuItem(text = { Text("No $label tracks") }, onClick = { open = false })
+            }
+            if (onAdd != null) {
+                DropdownMenuItem(text = { Text("Add subtitle file…") }, onClick = { open = false; onAdd() })
             }
             groups.forEachIndexed { index, group ->
                 val format = group.getTrackFormat(0)
