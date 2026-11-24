@@ -9,9 +9,15 @@ data class TorrentProgress(val percent: Int, val bytesPerSec: Long, val peers: I
 interface TorrentEngine {
     /**
      * Downloads [magnet] into [dir] and returns when every file is complete. Stops sharing as soon as it is done.
+     * Downloads in order and calls [onStreamable] with the main video file once enough of its start is on disk to play it.
      * Throws [TorrentException] with a readable reason when nobody sends data or the torrent cannot start.
      */
-    suspend fun download(magnet: String, dir: File, onProgress: (TorrentProgress) -> Unit)
+    suspend fun download(
+        magnet: String,
+        dir: File,
+        onStreamable: (File) -> Unit = {},
+        onProgress: (TorrentProgress) -> Unit,
+    )
 }
 
 class TorrentException(message: String) : RuntimeException(message)

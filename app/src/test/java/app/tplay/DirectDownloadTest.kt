@@ -30,7 +30,11 @@ class DirectDownloadTest {
             current = job
         }
         override suspend fun addTitle(title: Title) {
+            titles.removeAll { it.id == title.id }
             titles += title
+        }
+        override suspend fun removeTitle(id: Long) {
+            titles.removeAll { it.id == id }
         }
     }
 
@@ -54,7 +58,12 @@ class DirectDownloadTest {
         val parent = Files.createTempDirectory("movies").toFile()
         val store = MemoryStore(job(parent))
         val engine = object : TorrentEngine {
-            override suspend fun download(magnet: String, dir: File, onProgress: (TorrentProgress) -> Unit) {
+            override suspend fun download(
+                magnet: String,
+                dir: File,
+                onStreamable: (File) -> Unit,
+                onProgress: (TorrentProgress) -> Unit,
+            ) {
                 onProgress(TorrentProgress(40, 1_000_000, 8, "Downloading"))
                 File(dir, "Sintel.2010.1080p.mp4").apply { parentFile.mkdirs() }.writeBytes(ByteArray(2048))
             }
@@ -76,7 +85,12 @@ class DirectDownloadTest {
         val parent = Files.createTempDirectory("movies").toFile()
         val store = MemoryStore(job(parent))
         val engine = object : TorrentEngine {
-            override suspend fun download(magnet: String, dir: File, onProgress: (TorrentProgress) -> Unit) {
+            override suspend fun download(
+                magnet: String,
+                dir: File,
+                onStreamable: (File) -> Unit,
+                onProgress: (TorrentProgress) -> Unit,
+            ) {
                 File(dir, "part.bin").apply { parentFile.mkdirs() }.writeBytes(ByteArray(10))
                 throw TorrentException("No one is sharing this torrent right now (no peers found).")
             }
@@ -93,7 +107,12 @@ class DirectDownloadTest {
         val parent = Files.createTempDirectory("movies").toFile()
         val store = MemoryStore(job(parent))
         val engine = object : TorrentEngine {
-            override suspend fun download(magnet: String, dir: File, onProgress: (TorrentProgress) -> Unit) {
+            override suspend fun download(
+                magnet: String,
+                dir: File,
+                onStreamable: (File) -> Unit,
+                onProgress: (TorrentProgress) -> Unit,
+            ) {
                 File(dir, "half.mkv").apply { parentFile.mkdirs() }.writeBytes(ByteArray(10))
                 throw kotlinx.coroutines.CancellationException("stopped")
             }
@@ -111,7 +130,12 @@ class DirectDownloadTest {
     @Test fun twoDownloadsOfTheSameMovieNeverShareAFolder() {
         val parent = Files.createTempDirectory("movies").toFile()
         val engine = object : TorrentEngine {
-            override suspend fun download(magnet: String, dir: File, onProgress: (TorrentProgress) -> Unit) {
+            override suspend fun download(
+                magnet: String,
+                dir: File,
+                onStreamable: (File) -> Unit,
+                onProgress: (TorrentProgress) -> Unit,
+            ) {
                 File(dir, "Sintel.2010.mp4").apply { parentFile.mkdirs() }.writeBytes(ByteArray(100))
             }
         }
@@ -134,5 +158,45 @@ class DirectDownloadTest {
         val ok = runBlocking { PipelineRunner(mockk(relaxed = true), NoSubtitles, store).runDirect(1) }
         assertFalse(ok)
         assertTrue(store.current.error.orEmpty().contains("not available"))
+    }
+
+    @Test fun titleAppearsAsSoonAsTheVideoCanBePlayedAndIsNotDuplicated() {
+        val parent = Files.createTempDirectory("movies").toFile()
+        val store = MemoryStore(job(parent))
+        var seenWhileDownloading = 0
+        val engine = object : TorrentEngine {
+            override suspend fun download(
+                magnet: String,
+                dir: File,
+                onStreamable: (File) -> Unit,
+                onProgress: (TorrentProgress) -> Unit,
+            ) {
+                File(dir, "Sintel.2010.mp4").apply { parentFile.mkdirs() }.writeBytes(ByteArray(100))
+                onStreamable(File(dir, "Sintel.2010.mp4"))
+                seenWhileDownloading = store.titles.size
+            }
+        }
+        assertTrue(runBlocking { runner(store, engine).runDirect(1) })
+        assertEquals(1, seenWhileDownloading)
+        assertEquals(1, store.titles.size)
+    }
+
+    @Test fun failureAfterThePlayableMomentRemovesTheEarlyTitle() {
+        val parent = Files.createTempDirectory("movies").toFile()
+        val store = MemoryStore(job(parent))
+        val engine = object : TorrentEngine {
+            override suspend fun download(
+                magnet: String,
+                dir: File,
+                onStreamable: (File) -> Unit,
+                onProgress: (TorrentProgress) -> Unit,
+            ) {
+                File(dir, "Sintel.2010.mp4").apply { parentFile.mkdirs() }.writeBytes(ByteArray(100))
+                onStreamable(File(dir, "Sintel.2010.mp4"))
+                throw TorrentException("stalled")
+            }
+        }
+        assertFalse(runBlocking { runner(store, engine).runDirect(1) })
+        assertTrue(store.titles.isEmpty())
     }
 }

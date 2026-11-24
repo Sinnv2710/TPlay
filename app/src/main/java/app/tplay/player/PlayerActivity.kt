@@ -52,7 +52,15 @@ class PlayerActivity : ComponentActivity() {
         titleId = intent.getLongExtra(PlayerLauncher.EXTRA_TITLE_ID, 0L)
         val title = intent.getStringExtra(PlayerLauncher.EXTRA_TITLE).orEmpty()
         val start = intent.getLongExtra(PlayerLauncher.EXTRA_POSITION, 0L)
-        val exo = ExoPlayer.Builder(this).build()
+        val sources: androidx.media3.datasource.DataSource.Factory =
+            if (Uri.parse(uri).scheme == "file") {
+                androidx.media3.datasource.DataSource.Factory { GrowingFileDataSource() }
+            } else {
+                androidx.media3.datasource.DefaultDataSource.Factory(this)
+            }
+        val exo = ExoPlayer.Builder(this)
+            .setMediaSourceFactory(androidx.media3.exoplayer.source.DefaultMediaSourceFactory(sources))
+            .build()
         exo.setMediaItem(buildItem(uri, intent.getStringExtra(PlayerLauncher.EXTRA_SUBS_DIR)), start)
         exo.prepare()
         exo.playWhenReady = true

@@ -133,6 +133,7 @@ private fun ItemCard(item: LibraryItem, onPlay: () -> Unit, onDelete: () -> Unit
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (title.filesDeleted) Tag("stream only") else Tag(formatBytes(title.sizeBytes))
                     if (title.folderPath?.contains("/Direct/") == true) Tag("direct download")
+                    if (app.tplay.work.TorrentStreams.isDownloading(title.folderPath)) Tag("still downloading")
                     item.daysLeft?.let { Tag("deleted in $it d") }
                     progress?.let { Tag(formatAge(it.updatedAt)) }
                 }

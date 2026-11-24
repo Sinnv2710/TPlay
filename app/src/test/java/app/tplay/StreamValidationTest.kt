@@ -33,6 +33,9 @@ class StreamValidationTest {
         override suspend fun addTitle(title: Title) {
             titles += title
         }
+        override suspend fun removeTitle(id: Long) {
+            titles.removeAll { it.id == id }
+        }
     }
 
     private object NoSubs : SubtitleRepository {

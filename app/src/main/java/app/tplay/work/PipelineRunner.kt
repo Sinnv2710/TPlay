@@ -28,6 +28,7 @@ interface PipelineStore {
     suspend fun job(id: Long): Job?
     suspend fun update(job: Job)
     suspend fun addTitle(title: Title)
+    suspend fun removeTitle(id: Long)
 }
 
 class PipelineRunner(
@@ -99,12 +100,30 @@ class PipelineRunner(
         val parsed = parseTitleName(name)
         val root = directRoot ?: File(job.parentFolder, DIRECT_DIR)
         // Each attempt downloads into its own private folder, so a cancelled attempt can never touch a newer one.
-        val work = File(root, ".job-$jobId-${System.nanoTime()}")
+        // The download goes straight into its final folder so the movie can be played while it is still coming in.
+        val work = withContext(Dispatchers.IO) { freeFolder(root, folderNameFor(parsed)) }
         var folder = work
+        var early: Title? = null
+        val posterUrl = poster(parsed)
         try {
             job = step(job, JobStatus.DOWNLOADING, 2, "Looking for peers")
             var last = 0L
-            torrent.download(job.magnet, work) { progress ->
+            torrent.download(job.magnet, work, onStreamable = {
+                val title = Title(
+                    id = System.currentTimeMillis(),
+                    name = parsed.title,
+                    year = parsed.year,
+                    posterUrl = posterUrl,
+                    folderPath = work.path,
+                    sizeBytes = 0,
+                    createdAt = System.currentTimeMillis(),
+                    rdTorrentId = null,
+                    rdLink = null,
+                    filesDeleted = false,
+                )
+                early = title
+                runBlockingTitle(title)
+            }) { progress ->
                 val now = System.currentTimeMillis()
                 if (now - last < 1_000) return@download
                 last = now
@@ -116,13 +135,12 @@ class PipelineRunner(
                 )
                 runBlockingUpdate(job)
             }
-            folder = withContext(Dispatchers.IO) { moveIntoPlace(work, root, folderNameFor(parsed)) }
             job = step(job, JobStatus.UNPACKING, 92, "Unpack archives")
             withContext(Dispatchers.IO) { unpackAll(folder) }
             job = step(job, JobStatus.SUBTITLES, 96, "Add subtitles")
             withContext(Dispatchers.IO) { addSubtitles(job, folder, parsed) }
             val title = Title(
-                id = System.currentTimeMillis(),
+                id = early?.id ?: System.currentTimeMillis(),
                 name = parsed.title,
                 year = parsed.year,
                 posterUrl = poster(parsed),
@@ -138,11 +156,13 @@ class PipelineRunner(
             return true
         } catch (e: CancellationException) {
             removePartial(work, folder)
+            early?.let { store.removeTitle(it.id) }
             throw e
         } catch (e: Throwable) {
             // Throwable on purpose: a missing native library is an Error, and the job must not stay "Downloading".
             Log.e(TAG, "direct job $jobId failed", e)
             removePartial(work, folder)
+            early?.let { store.removeTitle(it.id) }
             return fail(job, e.message ?: e.javaClass.simpleName)
         }
     }
@@ -154,12 +174,16 @@ class PipelineRunner(
         folders.forEach { it.deleteRecursively() }
     }
 
-    /** Moves a finished download from its private folder to `<root>/<name>`, adding " (2)" if that name is taken. */
-    private fun moveIntoPlace(work: File, root: File, name: String): File {
+    /** `<root>/<name>`, or `<root>/<name> (2)` and so on when that folder already exists. */
+    private fun freeFolder(root: File, name: String): File {
         var target = File(root, name)
         var n = 2
         while (target.exists()) target = File(root, "$name ($n)").also { n++ }
-        return if (work.renameTo(target)) target else work
+        return target
+    }
+
+    private fun runBlockingTitle(title: Title) {
+        kotlinx.coroutines.runBlocking { store.addTitle(title) }
     }
 
     private fun runBlockingUpdate(job: Job) {

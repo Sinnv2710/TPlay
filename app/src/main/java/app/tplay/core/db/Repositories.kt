@@ -24,9 +24,14 @@ class PipelineStoreImpl(private val db: TPlayDatabase, private val store: JobSto
 
     override suspend fun update(job: Job) = store.update(job)
 
+    override suspend fun removeTitle(id: Long) {
+        db.titles().delete(id)
+        db.progress().delete(id)
+    }
+
     /** Adding the same movie again (same name and year) replaces the old entry and keeps its watch progress. */
     override suspend fun addTitle(title: Title) {
-        val previous = db.titles().sameMovie(title.name, title.year).firstOrNull()
+        val previous = db.titles().sameMovie(title.name, title.year).firstOrNull { it.id != title.id }
         if (previous != null) {
             db.titles().delete(previous.id)
             db.progress().get(previous.id)?.let { db.progress().put(it.copy(titleId = title.id)) }
