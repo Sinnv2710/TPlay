@@ -77,6 +77,8 @@ interface JobRepository {
     /** Starts the pipeline (send to RD, download, unpack, subtitles). Returns the job id. */
     suspend fun enqueue(magnet: String, subtitleUrl: String?, parentFolder: String, playWhenReady: Boolean): Long
     suspend fun cancel(jobId: Long)
+    /** Downloads the job's torrent onto the phone itself, skipping Real-Debrid. */
+    suspend fun downloadDirect(jobId: Long)
 }
 
 interface ProgressRepository {

@@ -13,6 +13,10 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
@@ -41,15 +45,21 @@ fun ActiveScreen(viewModel: ActiveViewModel = hiltViewModel()) {
         }
         LazyColumn(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             items(jobs, key = { it.id }) { job ->
-                JobCard(job, onCancel = { viewModel.cancel(job) }, onRetry = { viewModel.retry(job) })
+                JobCard(
+                    job,
+                    onCancel = { viewModel.cancel(job) },
+                    onRetry = { viewModel.retry(job) },
+                    onDirect = { viewModel.downloadDirect(job) },
+                )
             }
         }
     }
 }
 
 @Composable
-private fun JobCard(job: Job, onCancel: () -> Unit, onRetry: () -> Unit) {
+private fun JobCard(job: Job, onCancel: () -> Unit, onRetry: () -> Unit, onDirect: () -> Unit) {
     val name = MagnetParser.parse(job.magnet)?.displayName ?: "Movie"
+    var confirmDirect by remember { mutableStateOf(false) }
     Card(Modifier.fillMaxWidth()) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -64,10 +74,31 @@ private fun JobCard(job: Job, onCancel: () -> Unit, onRetry: () -> Unit) {
                 }
             }
             job.error?.let { Text(it, color = MaterialTheme.colorScheme.error) }
+            if (confirmDirect) {
+                AlertDialog(
+                    onDismissRequest = { confirmDirect = false },
+                    title = { Text("Download directly?") },
+                    text = {
+                        Text(
+                            "The torrent downloads onto this phone, in the Direct folder next to your movies, without " +
+                                "Real-Debrid. Other people can see your phone's address while it runs, so use a VPN. " +
+                                "Delete it from the Library any time to remove its files.",
+                        )
+                    },
+                    confirmButton = {
+                        TextButton(onClick = {
+                            confirmDirect = false
+                            onDirect()
+                        }) { Text("Download") }
+                    },
+                    dismissButton = { TextButton(onClick = { confirmDirect = false }) { Text("Cancel") } },
+                )
+            }
             Row {
                 if (job.status in RUNNING) TextButton(onClick = onCancel) { Text("Cancel") }
                 if (job.status == JobStatus.FAILED || job.status == JobStatus.CANCELLED) {
                     TextButton(onClick = onRetry) { Text("Try again") }
+                    TextButton(onClick = { confirmDirect = true }) { Text("Download directly") }
                 }
             }
         }

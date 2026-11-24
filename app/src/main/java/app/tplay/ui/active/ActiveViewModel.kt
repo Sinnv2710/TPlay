@@ -23,6 +23,11 @@ class ActiveViewModel @Inject constructor(
         viewModelScope.launch { jobs.cancel(job.id) }
     }
 
+    /** Fetches the torrent onto the phone itself, for releases Real-Debrid will not serve. */
+    fun downloadDirect(job: Job) {
+        viewModelScope.launch { jobs.downloadDirect(job.id) }
+    }
+
     fun retry(job: Job) {
         viewModelScope.launch { jobs.enqueue(job.magnet, job.subtitleUrl, job.parentFolder, true) }
     }

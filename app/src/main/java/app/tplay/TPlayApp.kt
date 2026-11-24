@@ -30,7 +30,16 @@ class TPlayApp : Application() {
         val cleanup = PeriodicWorkRequestBuilder<CleanupWorker>(1, TimeUnit.DAYS).build()
         WorkManager.getInstance(this)
             .enqueueUniquePeriodicWork("cleanup", ExistingPeriodicWorkPolicy.KEEP, cleanup)
+        dropStaleWorkOnce()
         if (BuildConfig.DEBUG) importDebugTokens()
+    }
+
+    /** One time: forget background jobs left over from earlier test builds so they do not restart on every launch. */
+    private fun dropStaleWorkOnce() {
+        val marker = File(filesDir, "stale-work-cleared-1")
+        if (marker.exists()) return
+        WorkManager.getInstance(this).cancelAllWorkByTag("pipeline")
+        marker.writeText("done")
     }
 
     /** Debug builds only: tokens pushed to files/import-tokens.json by the developer go into the vault. */

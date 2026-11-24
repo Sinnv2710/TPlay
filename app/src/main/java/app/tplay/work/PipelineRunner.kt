@@ -37,8 +37,12 @@ class PipelineRunner(
     private val downloader: FileDownloader = FileDownloader(),
     private val unpacker: Unpacker = Unpacker(),
     private val tmdb: TmdbClient? = null,
+    private val engine: TorrentEngine? = null,
     private val http: OkHttpClient = OkHttpClient(),
     private val pollDelayMs: Long = 3_000L,
+    private val cleanupGraceMs: Long = CLEANUP_GRACE_MS,
+    /** Where direct torrent downloads live. Null puts a Direct folder inside the job's own folder. */
+    private val directRoot: File? = null,
 ) {
     /** Runs the whole job. Returns true when the title is ready to play. */
     suspend fun run(jobId: Long, stream: Boolean = false): Boolean {
@@ -82,6 +86,84 @@ class PipelineRunner(
             }
             delay(pollDelayMs)
         }
+    }
+
+    /**
+     * Downloads the torrent straight onto the phone (no Real-Debrid) into `<parent>/Direct/<name>`.
+     * The folder holds only this download, so deleting the title removes everything it fetched.
+     */
+    suspend fun runDirect(jobId: Long): Boolean {
+        var job = store.job(jobId) ?: return false
+        val torrent = engine ?: return fail(job, "Direct download is not available in this build")
+        val name = app.tplay.share.MagnetParser.parse(job.magnet)?.displayName ?: "Movie"
+        val parsed = parseTitleName(name)
+        val root = directRoot ?: File(job.parentFolder, DIRECT_DIR)
+        // Each attempt downloads into its own private folder, so a cancelled attempt can never touch a newer one.
+        val work = File(root, ".job-$jobId-${System.nanoTime()}")
+        var folder = work
+        try {
+            job = step(job, JobStatus.DOWNLOADING, 2, "Looking for peers")
+            var last = 0L
+            torrent.download(job.magnet, work) { progress ->
+                val now = System.currentTimeMillis()
+                if (now - last < 1_000) return@download
+                last = now
+                job = job.copy(
+                    status = JobStatus.DOWNLOADING,
+                    progress = (progress.percent * 0.9).toInt().coerceAtLeast(2),
+                    speedBytesPerSec = progress.bytesPerSec,
+                    step = "${progress.stage} · ${progress.peers} peers",
+                )
+                runBlockingUpdate(job)
+            }
+            folder = withContext(Dispatchers.IO) { moveIntoPlace(work, root, folderNameFor(parsed)) }
+            job = step(job, JobStatus.UNPACKING, 92, "Unpack archives")
+            withContext(Dispatchers.IO) { unpackAll(folder) }
+            job = step(job, JobStatus.SUBTITLES, 96, "Add subtitles")
+            withContext(Dispatchers.IO) { addSubtitles(job, folder, parsed) }
+            val title = Title(
+                id = System.currentTimeMillis(),
+                name = parsed.title,
+                year = parsed.year,
+                posterUrl = poster(parsed),
+                folderPath = folder.path,
+                sizeBytes = folder.walkTopDown().filter { it.isFile }.sumOf { it.length() },
+                createdAt = System.currentTimeMillis(),
+                rdTorrentId = null,
+                rdLink = null,
+                filesDeleted = false,
+            )
+            store.addTitle(title)
+            store.update(job.copy(status = JobStatus.READY, progress = 100, step = "Ready to play", titleId = title.id))
+            return true
+        } catch (e: CancellationException) {
+            removePartial(work, folder)
+            throw e
+        } catch (e: Throwable) {
+            // Throwable on purpose: a missing native library is an Error, and the job must not stay "Downloading".
+            Log.e(TAG, "direct job $jobId failed", e)
+            removePartial(work, folder)
+            return fail(job, e.message ?: e.javaClass.simpleName)
+        }
+    }
+
+    /** Deletes what a stopped direct download left. The engine may still be creating files, so look again after a moment. */
+    private suspend fun removePartial(vararg folders: File) = withContext(kotlinx.coroutines.NonCancellable) {
+        folders.forEach { it.deleteRecursively() }
+        delay(cleanupGraceMs)
+        folders.forEach { it.deleteRecursively() }
+    }
+
+    /** Moves a finished download from its private folder to `<root>/<name>`, adding " (2)" if that name is taken. */
+    private fun moveIntoPlace(work: File, root: File, name: String): File {
+        var target = File(root, name)
+        var n = 2
+        while (target.exists()) target = File(root, "$name ($n)").also { n++ }
+        return if (work.renameTo(target)) target else work
+    }
+
+    private fun runBlockingUpdate(job: Job) {
+        kotlinx.coroutines.runBlocking { store.update(job) }
     }
 
     private suspend fun selectFiles(job: Job, torrentId: String, info: TorrentInfo): Boolean {
@@ -292,6 +374,8 @@ class PipelineRunner(
 
     private companion object {
         const val TAG = "TPlayPipeline"
+        const val DIRECT_DIR = "Direct"
+        const val CLEANUP_GRACE_MS = 1_500L
         val SUB_EXT = setOf("srt", "ass", "vtt", "sub")
     }
 }

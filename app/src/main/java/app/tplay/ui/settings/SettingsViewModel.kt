@@ -46,6 +46,13 @@ class SettingsViewModel @Inject constructor(
     val startPage = share("", settings.browseStartPage())
     val showAdult = share(false, settings.showAdult())
     val usedBytes = share(0L, library.titles().map { list -> list.filter { !it.filesDeleted }.sumOf { it.sizeBytes } })
+    /** Titles that were downloaded straight onto the phone (not through Real-Debrid). */
+    private val directTitles = library.titles().map { list ->
+        list.filter { it.folderPath?.contains("/Direct/") == true && !it.filesDeleted }
+    }
+    val directCount = share(0, directTitles.map { it.size })
+    val directBytes = share(0L, directTitles.map { list -> list.sumOf { it.sizeBytes } })
+    private val libraryRepo = library
     val services: StateFlow<List<ServiceRow>> = share(
         KNOWN_SERVICES,
         vault.services().map { stored -> mergeServices(stored) },
@@ -83,6 +90,16 @@ class SettingsViewModel @Inject constructor(
 
     fun setStartPage(value: String) {
         viewModelScope.launch { settings.setBrowseStartPage(value) }
+    }
+
+    /** Removes every direct download: its files and its library entry. */
+    fun deleteDirectDownloads() {
+        viewModelScope.launch {
+            val titles = directTitles.first()
+            titles.forEach { libraryRepo.delete(it.id, removeFromRd = false) }
+            message.value = "Deleted ${titles.size} direct downloads"
+            refreshCache()
+        }
     }
 
     fun setShowAdult(value: Boolean) {

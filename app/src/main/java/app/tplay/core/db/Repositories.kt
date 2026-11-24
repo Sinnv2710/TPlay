@@ -89,8 +89,22 @@ class JobRepositoryImpl(
         return id
     }
 
+    override suspend fun downloadDirect(jobId: Long) {
+        val job = store.get(jobId) ?: return
+        store.update(job.copy(status = JobStatus.QUEUED, progress = 0, speedBytesPerSec = 0, step = "Queued", error = null))
+        val network = if (settings.wifiOnly().first()) NetworkType.UNMETERED else NetworkType.CONNECTED
+        val request = OneTimeWorkRequestBuilder<PipelineWorker>()
+            .setInputData(workDataOf(PipelineWorker.KEY_JOB_ID to jobId, PipelineWorker.KEY_DIRECT to true))
+            .setConstraints(Constraints.Builder().setRequiredNetworkType(network).build())
+            .addTag("pipeline")
+            .build()
+        WorkManager.getInstance(context)
+            .enqueueUniqueWork("job-$jobId-direct", ExistingWorkPolicy.REPLACE, request)
+    }
+
     override suspend fun cancel(jobId: Long) {
         WorkManager.getInstance(context).cancelUniqueWork("job-$jobId")
+        WorkManager.getInstance(context).cancelUniqueWork("job-$jobId-direct")
         store.get(jobId)?.let {
             store.update(it.copy(status = JobStatus.CANCELLED, step = "Cancelled", speedBytesPerSec = 0))
         }

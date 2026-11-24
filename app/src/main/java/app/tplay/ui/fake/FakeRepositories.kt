@@ -50,6 +50,7 @@ class FakeJobRepository : JobRepository {
             0, 0, "Queued", null, 0)
     ))
     override fun jobs(): Flow<List<Job>> = state
+    override suspend fun downloadDirect(jobId: Long) = Unit
     override suspend fun enqueue(magnet: String, subtitleUrl: String?, parentFolder: String,
         playWhenReady: Boolean): Long {
         val id = nextId.incrementAndGet()

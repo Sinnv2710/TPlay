@@ -47,6 +47,9 @@ fun SettingsScreen(onMessage: (String) -> Unit, viewModel: SettingsViewModel = h
     val player by viewModel.player.collectAsStateWithLifecycle()
     val startPage by viewModel.startPage.collectAsStateWithLifecycle()
     val showAdult by viewModel.showAdult.collectAsStateWithLifecycle()
+    val directCount by viewModel.directCount.collectAsStateWithLifecycle()
+    val directBytes by viewModel.directBytes.collectAsStateWithLifecycle()
+    var confirmDirect by remember { mutableStateOf(false) }
     val used by viewModel.usedBytes.collectAsStateWithLifecycle()
     val cache by viewModel.cacheBytes.collectAsStateWithLifecycle()
     val services by viewModel.services.collectAsStateWithLifecycle()
@@ -133,6 +136,32 @@ fun SettingsScreen(onMessage: (String) -> Unit, viewModel: SettingsViewModel = h
         )
         TextButton(onClick = { viewModel.setStartPage(startDraft) }) { Text("Save start page") }
 
+        SectionLabel("Direct downloads")
+        Text(
+            if (directCount == 0) "Nothing downloaded directly." else "$directCount titles · ${formatBytes(directBytes)}",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        Text(
+            "Torrents you downloaded onto the phone when Real-Debrid could not serve them. Each one lives in its own " +
+                "folder; deleting it here or in the Library removes its files.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        TextButton(onClick = { confirmDirect = true }, enabled = directCount > 0) { Text("Delete all direct downloads") }
+        if (confirmDirect) {
+            AlertDialog(
+                onDismissRequest = { confirmDirect = false },
+                title = { Text("Delete all direct downloads?") },
+                text = { Text("Removes $directCount titles and their files (${formatBytes(directBytes)}).") },
+                confirmButton = {
+                    TextButton(onClick = {
+                        confirmDirect = false
+                        viewModel.deleteDirectDownloads()
+                    }) { Text("Delete") }
+                },
+                dismissButton = { TextButton(onClick = { confirmDirect = false }) { Text("Cancel") } },
+            )
+        }
         SectionLabel("Discover")
         SwitchRow("Show the 18+ genre", showAdult, viewModel::setShowAdult)
         SectionLabel("Services and tokens")

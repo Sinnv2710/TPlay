@@ -28,6 +28,9 @@ class PipelineWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val runner = EntryPointAccessors
             .fromApplication(applicationContext, PipelineEntryPoint::class.java)
             .runner()
+        if (inputData.getBoolean(KEY_DIRECT, false)) {
+            return if (runner.runDirect(jobId)) Result.success() else Result.failure()
+        }
         val stream = inputData.getBoolean(KEY_STREAM, false)
         return if (runner.run(jobId, stream)) Result.success() else Result.failure()
     }
@@ -58,6 +61,7 @@ class PipelineWorker(context: Context, params: WorkerParameters) : CoroutineWork
     companion object {
         const val KEY_JOB_ID = "jobId"
         const val KEY_STREAM = "stream"
+        const val KEY_DIRECT = "direct"
         private const val CHANNEL = "downloads"
         private const val NOTIFICATION_ID = 41
     }

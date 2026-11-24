@@ -31,9 +31,13 @@ object PipelineModule {
     @Provides
     @Singleton
     fun runner(
+        @dagger.hilt.android.qualifiers.ApplicationContext context: android.content.Context,
         rd: RealDebridClient,
         subtitles: SubtitleRepository,
         store: PipelineStore,
         tmdb: TmdbClient,
-    ) = PipelineRunner(rd, subtitles, store, tmdb = tmdb)
+    ) = PipelineRunner(
+        rd, subtitles, store, tmdb = tmdb, engine = app.tplay.work.LibtorrentEngine(),
+        directRoot = java.io.File(context.filesDir, "Direct"),
+    )
 }
