@@ -284,7 +284,7 @@ class PipelineRunner(
     private fun RdResult<*>.describe(): String = when (this) {
         is RdResult.Ok -> "unexpected reply"
         is RdResult.Failure -> when (val e = error) {
-            is RdError.Http -> "Real-Debrid error ${e.code}: ${e.message}"
+            is RdError.Http -> friendlyRdError(e.code, e.message)
             is RdError.Network -> "Network problem: ${e.cause.message}"
             is RdError.Api -> e.message
         }
