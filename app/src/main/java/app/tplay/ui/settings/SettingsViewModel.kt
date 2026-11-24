@@ -45,6 +45,7 @@ class SettingsViewModel @Inject constructor(
     val player = share("builtin", settings.preferredPlayer())
     val startPage = share("", settings.browseStartPage())
     val showAdult = share(false, settings.showAdult())
+    val subtitleLanguage = share("vi", settings.subtitleLanguage())
     val usedBytes = share(0L, library.titles().map { list -> list.filter { !it.filesDeleted }.sumOf { it.sizeBytes } })
     /** Titles that were downloaded straight onto the phone (not through Real-Debrid). */
     private val directTitles = library.titles().map { list ->
@@ -104,6 +105,10 @@ class SettingsViewModel @Inject constructor(
 
     fun setShowAdult(value: Boolean) {
         viewModelScope.launch { settings.setShowAdult(value) }
+    }
+
+    fun setSubtitleLanguage(value: String) {
+        viewModelScope.launch { settings.setSubtitleLanguage(value) }
     }
 
     fun setPlayer(value: String) {

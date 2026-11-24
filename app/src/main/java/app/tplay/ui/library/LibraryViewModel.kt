@@ -27,6 +27,7 @@ class LibraryViewModel @Inject constructor(
     private val resolver: PlaybackResolver,
     private val tmdb: TmdbClient,
     private val rd: RealDebridClient,
+    private val subtitles: app.tplay.domain.SubtitleRepository,
 ) : ViewModel() {
     val tab = MutableStateFlow(LibraryTab.CONTINUE)
     val query = MutableStateFlow("")
@@ -101,6 +102,8 @@ class LibraryViewModel @Inject constructor(
                     val progress = item.progress
                     val resume = if (progress == null || progress.finished) 0L else progress.positionMs
                     val preferred = settings.preferredPlayer().first()
+                    val subsFolder = app.tplay.player.SubtitleFetcher(subtitles, context.filesDir)
+                        .ensure(item.title, settings.subtitleLanguage().first())
                     PlayerLauncher.launch(
                         context,
                         item.title.id,
@@ -108,7 +111,7 @@ class LibraryViewModel @Inject constructor(
                         result.uri,
                         resume,
                         preferred,
-                        item.title.folderPath,
+                        subsFolder.path,
                     )
                 }
             }

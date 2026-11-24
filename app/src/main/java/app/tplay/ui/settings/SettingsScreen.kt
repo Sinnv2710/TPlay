@@ -45,6 +45,7 @@ fun SettingsScreen(onMessage: (String) -> Unit, viewModel: SettingsViewModel = h
     val folder by viewModel.folder.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnly.collectAsStateWithLifecycle()
     val player by viewModel.player.collectAsStateWithLifecycle()
+    val subtitleLanguage by viewModel.subtitleLanguage.collectAsStateWithLifecycle()
     val startPage by viewModel.startPage.collectAsStateWithLifecycle()
     val showAdult by viewModel.showAdult.collectAsStateWithLifecycle()
     val directCount by viewModel.directCount.collectAsStateWithLifecycle()
@@ -121,6 +122,17 @@ fun SettingsScreen(onMessage: (String) -> Unit, viewModel: SettingsViewModel = h
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("builtin" to "Built-in", "vlc" to "VLC", "mx" to "MX Player").forEach { (id, label) ->
                 FilterChip(selected = player == id, onClick = { viewModel.setPlayer(id) }, label = { Text(label) })
+            }
+        }
+        Text("Subtitle language (English is the fallback)", style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            listOf("vi" to "Vietnamese", "en" to "English", "fr" to "French", "es" to "Spanish").forEach { (id, label) ->
+                FilterChip(
+                    selected = subtitleLanguage == id,
+                    onClick = { viewModel.setSubtitleLanguage(id) },
+                    label = { Text(label) },
+                )
             }
         }
         SwitchRow("Download on Wi-Fi only", wifiOnly, viewModel::setWifiOnly)

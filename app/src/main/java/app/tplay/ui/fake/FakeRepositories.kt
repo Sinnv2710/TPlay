@@ -80,6 +80,8 @@ class FakeSettingsRepository : SettingsRepository {
     override fun browseStartPage(): Flow<String> = MutableStateFlow("")
     override suspend fun setBrowseStartPage(value: String) = Unit
     private val adult = MutableStateFlow(false)
+    override fun subtitleLanguage() = kotlinx.coroutines.flow.flowOf("vi")
+    override suspend fun setSubtitleLanguage(value: String) {}
     override fun showAdult() = adult
     override suspend fun setShowAdult(value: Boolean) { adult.value = value }
     override fun cleanupPolicy() = policy

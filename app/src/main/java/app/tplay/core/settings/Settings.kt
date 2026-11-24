@@ -51,6 +51,7 @@ class SettingsRepositoryImpl(
     private val keepHistoryKey = booleanPreferencesKey("keep_history")
     private val folderKey = stringPreferencesKey("folder")
     private val wifiOnlyKey = booleanPreferencesKey("wifi_only")
+    private val subLangKey = stringPreferencesKey("subtitle_language")
     private val playerKey = stringPreferencesKey("player")
     private val browseKey = stringPreferencesKey("browse_start")
     private val adultKey = booleanPreferencesKey("show_adult")
@@ -98,6 +99,12 @@ class SettingsRepositoryImpl(
 
     override suspend fun setBrowseStartPage(value: String) {
         store.edit { preferences -> preferences[browseKey] = value.trim() }
+    }
+
+    override fun subtitleLanguage(): Flow<String> = store.data.map { it[subLangKey] ?: "vi" }
+
+    override suspend fun setSubtitleLanguage(value: String) {
+        store.edit { it[subLangKey] = value }
     }
 
     override fun showAdult(): Flow<Boolean> = store.data.map { it[adultKey] ?: false }

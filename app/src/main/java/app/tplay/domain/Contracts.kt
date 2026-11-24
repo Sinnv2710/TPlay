@@ -57,7 +57,27 @@ data class CleanupPolicy(
 
 data class ServiceToken(val serviceId: String, val label: String, val hasValue: Boolean)
 
-data class SubtitleHit(val id: String, val language: String, val release: String, val downloads: Int, val source: String)
+data class SubtitleHit(
+    val id: String,
+    val language: String,
+    val release: String,
+    val downloads: Int,
+    val source: String,
+    /** The movie the site says this subtitle belongs to (may be blank). */
+    val movie: String = "",
+    val year: Int? = null,
+)
+
+private fun letters(text: String) = text.lowercase().filter { it.isLetterOrDigit() }
+
+/** True when the hit is for this movie. Fuzzy site searches return other films; those must never be used. */
+fun SubtitleHit.matches(title: String, wantedYear: Int?): Boolean {
+    val wanted = letters(title)
+    if (wanted.isEmpty()) return false
+    val named = if (movie.isNotBlank()) letters(movie) == wanted else letters(release).contains(wanted)
+    val yearOk = wantedYear == null || year == null || year == wantedYear
+    return named && yearOk
+}
 
 interface LibraryRepository {
     fun titles(): Flow<List<Title>>
@@ -101,6 +121,8 @@ interface SettingsRepository {
     suspend fun setBrowseStartPage(value: String)
 
     /** Whether the 18+ genre is offered in Discover. Off by default. */
+    fun subtitleLanguage(): Flow<String>   // ISO 639-1, "vi" by default
+    suspend fun setSubtitleLanguage(value: String)
     fun showAdult(): Flow<Boolean>
     suspend fun setShowAdult(value: Boolean)
     suspend fun cacheBytes(): Long

@@ -10,6 +10,7 @@ import app.tplay.data.subs.SubtitleFiles
 import app.tplay.domain.Job
 import app.tplay.domain.JobStatus
 import app.tplay.domain.SubtitleRepository
+import app.tplay.domain.matches
 import app.tplay.domain.Title
 import java.io.File
 import java.io.RandomAccessFile
@@ -44,6 +45,8 @@ class PipelineRunner(
     private val cleanupGraceMs: Long = CLEANUP_GRACE_MS,
     /** Where direct torrent downloads live. Null puts a Direct folder inside the job's own folder. */
     private val directRoot: File? = null,
+    /** Preferred subtitle language (ISO 639-1). English is always tried after it. */
+    private val subtitleLanguage: suspend () -> String = { "en" },
 ) {
     /** Runs the whole job. Returns true when the title is ready to play. */
     suspend fun run(jobId: Long, stream: Boolean = false): Boolean {
@@ -345,9 +348,11 @@ class PipelineRunner(
             return
         }
         val hash = runCatching { RandomAccessFile(video, "r").use(SubtitleFiles::openSubtitlesHash) }.getOrNull()
-        val hits = runCatching { subtitles.search(parsed.title, parsed.year, "en", hash) }.getOrDefault(emptyList())
-        val best = hits.maxByOrNull { it.downloads } ?: return
-        runCatching { subtitles.download(best, video.parent ?: folder.path) }
+        for (language in listOf(subtitleLanguage(), "en").distinct()) {
+            val hits = runCatching { subtitles.search(parsed.title, parsed.year, language, hash) }.getOrDefault(emptyList())
+            val best = hits.filter { it.matches(parsed.title, parsed.year) }.maxByOrNull { it.downloads } ?: continue
+            if (runCatching { subtitles.download(best, video.parent ?: folder.path) }.isSuccess) return
+        }
     }
 
     private fun saveSubtitleLink(url: String, video: File) {

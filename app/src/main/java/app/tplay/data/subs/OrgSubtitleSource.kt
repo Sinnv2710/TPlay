@@ -27,6 +27,8 @@ class OrgSubtitleSource(
         val SubDownloadsCnt: String = "0",
         val SubDownloadLink: String = "",
         val SubFormat: String = "srt",
+        val MovieName: String = "",
+        val MovieYear: String = "",
     )
 
     fun search(title: String, year: Int?, language: String, fileHash: String?): List<SubtitleHit> {
@@ -59,6 +61,8 @@ class OrgSubtitleSource(
                     release = it.SubFileName,
                     downloads = it.SubDownloadsCnt.toIntOrNull() ?: 0,
                     source = "OpenSubtitles.org",
+                    movie = it.MovieName,
+                    year = it.MovieYear.toIntOrNull(),
                 )
             }
     }

@@ -41,7 +41,10 @@ class SubtitleRepositoryImpl(
         val release: String = "",
         val download_count: Int = 0,
         val files: List<RemoteFile> = emptyList(),
+        val feature_details: Feature = Feature(),
     )
+
+    @Serializable private data class Feature(val title: String = "", val year: Int? = null)
 
     @Serializable private data class RemoteFile(val file_id: Long, val file_name: String = "")
 
@@ -96,6 +99,8 @@ class SubtitleRepositoryImpl(
                 release = entry.attributes.release,
                 downloads = entry.attributes.download_count,
                 source = "OpenSubtitles",
+                movie = entry.attributes.feature_details.title,
+                year = entry.attributes.feature_details.year,
             )
         }
     }
