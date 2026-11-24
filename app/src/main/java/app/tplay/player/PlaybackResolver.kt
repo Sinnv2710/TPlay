@@ -4,6 +4,7 @@ import app.tplay.data.rd.RdResult
 import app.tplay.data.rd.RealDebridClient
 import app.tplay.domain.Title
 import app.tplay.work.isVideo
+import app.tplay.work.rdFailureText
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -24,7 +25,7 @@ class PlaybackResolver @Inject constructor(private val rd: RealDebridClient) {
                 val url = result.value.download ?: result.value.link
                 Result.Ready(url, false)
             }
-            is RdResult.Failure -> Result.Failed("Real-Debrid could not open the link. Check your token and plan.")
+            is RdResult.Failure -> Result.Failed(rdFailureText(result.error))
         }
     }
 

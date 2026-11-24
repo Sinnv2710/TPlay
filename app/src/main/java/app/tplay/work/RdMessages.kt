@@ -22,3 +22,10 @@ fun friendlyRdError(httpCode: Int, body: String?): String {
     val tail = name ?: body?.take(80)?.replace(Regex("\\s+"), " ").orEmpty()
     return if (reason != null) "$reason ($httpCode $tail)" else "Real-Debrid error $httpCode: $tail"
 }
+
+/** Readable text for any Real-Debrid failure. */
+fun rdFailureText(error: app.tplay.data.rd.RdError): String = when (error) {
+    is app.tplay.data.rd.RdError.Http -> friendlyRdError(error.code, error.message)
+    is app.tplay.data.rd.RdError.Network -> "Network problem: ${error.cause.message}"
+    is app.tplay.data.rd.RdError.Api -> error.message
+}

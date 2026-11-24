@@ -226,6 +226,9 @@ class PipelineRunner(
         parsed: ParsedName,
         folder: File,
     ): Boolean {
+        // Real-Debrid can accept a torrent and still refuse to unlock its file (for example a blocked file). Find out now.
+        val check = rd.unrestrict(info.links.first())
+        if (check is RdResult.Failure) return fail(start, rdFailureText(check.error))
         var job = step(start, JobStatus.SUBTITLES, 80, "Add subtitles")
         withContext(Dispatchers.IO) { addStreamSubtitles(job, folder, parsed) }
         val title = Title(
@@ -365,11 +368,7 @@ class PipelineRunner(
 
     private fun RdResult<*>.describe(): String = when (this) {
         is RdResult.Ok -> "unexpected reply"
-        is RdResult.Failure -> when (val e = error) {
-            is RdError.Http -> friendlyRdError(e.code, e.message)
-            is RdError.Network -> "Network problem: ${e.cause.message}"
-            is RdError.Api -> e.message
-        }
+        is RdResult.Failure -> rdFailureText(error)
     }
 
     private companion object {
